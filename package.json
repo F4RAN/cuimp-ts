@@ -11,21 +11,19 @@
   "engines": { "node": ">=18.17" },
   "type": "module",
   "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "require": "./dist/index.cjs",
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
   "files": ["dist"],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "prepare": "npm run build",
-    "smoke": "node --input-type=module -e \"import('./dist/index.mjs').then(m=>m.__smoke && m.__smoke())\""
+    "smoke": "node --input-type=module -e \"import('./dist/index.js').then(m=>m.__smoke && m.__smoke())\""
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
