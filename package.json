@@ -8,7 +8,9 @@
     "type": "git",
     "url": "git+https://github.com/f4ran/cuimp.git"
   },
-  "engines": { "node": ">=18.17" },
+  "engines": {
+    "node": ">=18.17"
+  },
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -20,14 +22,20 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "tsup src/index.ts --format cjs,esm --dts --external tar",
     "smoke": "node --input-type=module -e \"import('./dist/index.js').then(m=>m.__smoke && m.__smoke())\""
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
+    "@types/tar": "^6.1.13",
     "tsup": "^8.3.0",
     "typescript": "^5.6.2"
+  },
+  "dependencies": {
+    "tar": "^7.4.3"
   }
 }
