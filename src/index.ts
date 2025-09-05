@@ -1,6 +1,7 @@
 // Main exports
 export { Cuimp } from './cuimp'
 export { CuimpHttp } from './client'
+import cuimp from './cuimp'
 
 // Type exports
 export type {
@@ -69,4 +70,16 @@ export async function head<T = any>(url: string, config?: Omit<CuimpRequestConfi
 export async function options<T = any>(url: string, config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
   const client = createCuimpHttp()
   return client.options<T>(url, config)
+}
+
+
+export async function __smoke() {
+  const cu = new Cuimp()
+  const info = await cu.verifyBinary()
+  console.log('Binary:', info)  
+  const cmd = cu.buildCommandPreview('https://example.com', 'GET')
+  console.log('Preview:', cmd)
+
+  const res = await cuimp.get('https://example.com')
+  console.log('Response:', res)
 }

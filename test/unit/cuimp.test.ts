@@ -27,13 +27,22 @@ vi.mock('fs', () => ({
 
 describe('Cuimp', () => {
   let cuimp: Cuimp
-  const mockParseDescriptor = vi.mocked(await import('../../src/helpers/parser')).parseDescriptor
-  const mockValidateDescriptor = vi.mocked(await import('../../src/validations/descriptorValidation')).validateDescriptor
-  const mockFs = vi.mocked(await import('fs')).default
+  let mockParseDescriptor: any
+  let mockValidateDescriptor: any
+  let mockFs: any
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     cuimp = new Cuimp()
+    
+    // Get mocked functions
+    const parserModule = await import('../../src/helpers/parser')
+    const validationModule = await import('../../src/validations/descriptorValidation')
+    const fsModule = await import('fs')
+    
+    mockParseDescriptor = vi.mocked(parserModule.parseDescriptor)
+    mockValidateDescriptor = vi.mocked(validationModule.validateDescriptor)
+    mockFs = vi.mocked(fsModule.default)
   })
 
   afterEach(() => {

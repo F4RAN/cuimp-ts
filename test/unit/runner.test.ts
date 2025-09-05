@@ -88,7 +88,7 @@ describe('runBinary', () => {
   })
 
   it('should handle timeout', async () => {
-    const timeout = 100
+    const timeout = 50
     
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
@@ -103,7 +103,7 @@ describe('runBinary', () => {
       .rejects.toThrow(`Request timed out after ${timeout} ms`)
     
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
-  })
+  }, 200)
 
   it('should handle abort signal', async () => {
     const abortController = new AbortController()
@@ -127,7 +127,7 @@ describe('runBinary', () => {
     
     await expect(promise).rejects.toThrow()
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
-  })
+  }, 200)
 
   it('should handle already aborted signal', async () => {
     const abortController = new AbortController()
@@ -138,7 +138,7 @@ describe('runBinary', () => {
     })).rejects.toThrow()
     
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
-  })
+  }, 200)
 
   it('should handle multiple stdout chunks', async () => {
     const chunk1 = Buffer.from('chunk1')

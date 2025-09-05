@@ -39,11 +39,18 @@ vi.mock('tar', () => ({
 }))
 
 describe('parseDescriptor', () => {
-  const mockGetLatestRelease = vi.mocked(await import('../../src/helpers/connector')).getLatestRelease
-  const mockFs = vi.mocked(await import('fs')).default
+  let mockGetLatestRelease: any
+  let mockFs: any
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    
+    // Get mocked functions
+    const connectorModule = await import('../../src/helpers/connector')
+    const fsModule = await import('fs')
+    
+    mockGetLatestRelease = vi.mocked(connectorModule.getLatestRelease)
+    mockFs = vi.mocked(fsModule.default)
   })
 
   afterEach(() => {

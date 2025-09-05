@@ -7,12 +7,12 @@ class Cuimp {
   private descriptor: CuimpDescriptor
   private path: string
   private binaryInfo?: BinaryInfo
-
+  
   constructor(options?: CuimpOptions) {
     this.descriptor = options?.descriptor || {}
     this.path = options?.path || ''
   }
-
+  
   /**
    * Verifies the binary is present and executable
    * Returns the binary path if found or downloads it
@@ -168,3 +168,39 @@ class Cuimp {
 }
 
 export { Cuimp }
+
+// Default export with convenience functions
+export default {
+  get: async <T = any>(url: string, config?: any) => {
+    const { get } = await import('./index')
+    return get<T>(url, config)
+  },
+  post: async <T = any>(url: string, data?: any, config?: any) => {
+    const { post } = await import('./index')
+    return post<T>(url, data, config)
+  },
+  put: async <T = any>(url: string, data?: any, config?: any) => {
+    const { put } = await import('./index')
+    return put<T>(url, data, config)
+  },
+  patch: async <T = any>(url: string, data?: any, config?: any) => {
+    const { patch } = await import('./index')
+    return patch<T>(url, data, config)
+  },
+  delete: async <T = any>(url: string, config?: any) => {
+    const { del } = await import('./index')
+    return del<T>(url, config)
+  },
+  head: async <T = any>(url: string, config?: any) => {
+    const { head } = await import('./index')
+    return head<T>(url, config)
+  },
+  options: async <T = any>(url: string, config?: any) => {
+    const { options } = await import('./index')
+    return options<T>(url, config)
+  },
+  request: async <T = any>(config: any) => {
+    const { request } = await import('./index')
+    return request<T>(config)
+  }
+}

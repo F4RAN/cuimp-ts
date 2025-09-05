@@ -56,12 +56,12 @@ describe('validateDescriptor', () => {
       }
       
       expect(() => validateDescriptor(invalidDescriptor)).toThrow(
-        "Architecture 'invalid-arch' is not supported. Supported architectures: x64, arm64, x86"
+        "Architecture 'invalid-arch' is not supported. Supported architectures: x64, arm64"
       )
     })
 
     it('should accept valid architectures', () => {
-      const validArchitectures = ['x64', 'arm64', 'x86']
+      const validArchitectures = ['x64', 'arm64']
       
       validArchitectures.forEach(architecture => {
         const descriptor: CuimpDescriptor = { architecture }
@@ -77,12 +77,12 @@ describe('validateDescriptor', () => {
       }
       
       expect(() => validateDescriptor(invalidDescriptor)).toThrow(
-        "Platform 'invalid-platform' is not supported. Supported platforms: linux, darwin, win32"
+        "Platform 'invalid-platform' is not supported. Supported platforms: linux, windows, macos"
       )
     })
 
     it('should accept valid platforms', () => {
-      const validPlatforms = ['linux', 'darwin', 'win32']
+      const validPlatforms = ['linux', 'windows', 'macos']
       
       validPlatforms.forEach(platform => {
         const descriptor: CuimpDescriptor = { platform }

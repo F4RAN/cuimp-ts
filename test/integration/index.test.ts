@@ -43,13 +43,24 @@ vi.mock('fs', () => ({
 }))
 
 describe('Integration Tests - Main API', () => {
-  const mockRunBinary = vi.mocked(await import('../../src/runner')).runBinary
-  const mockParseDescriptor = vi.mocked(await import('../../src/helpers/parser')).parseDescriptor
-  const mockValidateDescriptor = vi.mocked(await import('../../src/validations/descriptorValidation')).validateDescriptor
-  const mockFs = vi.mocked(await import('fs')).default
+  let mockRunBinary: any
+  let mockParseDescriptor: any
+  let mockValidateDescriptor: any
+  let mockFs: any
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    
+    // Get mocked functions
+    const runnerModule = await import('../../src/runner')
+    const parserModule = await import('../../src/helpers/parser')
+    const validationModule = await import('../../src/validations/descriptorValidation')
+    const fsModule = await import('fs')
+    
+    mockRunBinary = vi.mocked(runnerModule.runBinary)
+    mockParseDescriptor = vi.mocked(parserModule.parseDescriptor)
+    mockValidateDescriptor = vi.mocked(validationModule.validateDescriptor)
+    mockFs = vi.mocked(fsModule.default)
     
     // Setup default mocks
     mockParseDescriptor.mockResolvedValue({

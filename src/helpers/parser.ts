@@ -14,6 +14,7 @@ const BINARY_SEARCH_PATHS = [
     '/sbin/',
     '/usr/sbin/',
     '/usr/local/sbin/',
+    './binaries/',  // Dedicated folder for downloaded binaries
     './',
     '../',
     '../../',
@@ -154,11 +155,11 @@ const downloadAndExtractBinary = async (
         const actualVersion = version === 'latest' ? latestVersion.replace(/^v/, '') : version.replace(/^v/, '')
         
         // Construct download URL
-        const assetName = `curl-impersonate-${latestVersion}-${browser}-${architecture}-${platform}.tar.gz`
-        const downloadUrl = `https://github.com/lexiforest/curl-impersonate/releases/download/v${latestVersion}/${assetName}`
+        const assetName = `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
+        const downloadUrl = `https://github.com/lexiforest/curl-impersonate/releases/download/${latestVersion}/${assetName}`
         
         // Download the binary
-        console.log(`Downloading ${assetName}...`)
+        console.log(`Downloading ${downloadUrl}...`)
         const response = await fetch(downloadUrl)
         
         if (!response.ok) {
@@ -172,25 +173,64 @@ const downloadAndExtractBinary = async (
         const tempFileName = `${browser}-${architecture}-${platform}.tar.gz`
         fs.writeFileSync(tempFileName, buffer)
         
-        // Set executable permissions
-        fs.chmodSync(tempFileName, 0o755)
+        // Create binaries directory if it doesn't exist
+        const binariesDir = path.resolve('./binaries')
+        if (!fs.existsSync(binariesDir)) {
+            fs.mkdirSync(binariesDir, { recursive: true })
+        }
         
-        // Extract the binary
-        console.log(`Extracting ${tempFileName}...`)
+        // Extract the binary to the binaries directory
+        console.log(`Extracting ${tempFileName} to ${binariesDir}...`)
         await extract({
             file: tempFileName,
-            filter: (filePath: string) => {
-                return filePath.includes(`curl-impersonate-${actualVersion}-${browser}-${architecture}-${platform}`)
-            }
+            cwd: binariesDir
         })
         
         // Clean up temporary file
         fs.unlinkSync(tempFileName)
         
-        // Return the extracted binary path
-        const extractedBinaryName = `curl-impersonate-${actualVersion}-${browser}-${architecture}-${platform}`
+        // Find the extracted binary file in the binaries directory
+        // The main binary is usually named 'curl-impersonate'
+        const mainBinaryName = 'curl-impersonate'
+        const binaryPath = path.resolve(binariesDir, mainBinaryName)
+        
+        // Check if the main binary was extracted
+        if (!fs.existsSync(binaryPath)) {
+            // If main binary not found, look for browser-specific binaries
+            const browserSpecificPattern = `curl_${browser}*`
+            const files = fs.readdirSync(binariesDir)
+            const matchingFiles = files.filter(file => {
+                const regex = new RegExp(browserSpecificPattern.replace('*', '.*'))
+                return regex.test(file)
+            })
+            
+            if (matchingFiles.length > 0) {
+                // Use the highest version browser-specific binary
+                const sortedFiles = matchingFiles.sort((a, b) => {
+                    const versionA = extractVersionNumber(a)
+                    const versionB = extractVersionNumber(b)
+                    return versionB - versionA // Sort in descending order (highest first)
+                })
+                const bestMatch = sortedFiles[0]
+                const browserBinaryPath = path.resolve(binariesDir, bestMatch)
+                
+                // Set executable permissions on the browser-specific binary
+                fs.chmodSync(browserBinaryPath, 0o755)
+                
+                return {
+                    binaryPath: browserBinaryPath,
+                    version: actualVersion
+                }
+            }
+            
+            throw new Error(`Binary not found after extraction. Expected: ${binaryPath}`)
+        }
+        
+        // Set executable permissions on the main binary
+        fs.chmodSync(binaryPath, 0o755)
+        
         return {
-            binaryPath: path.resolve(extractedBinaryName),
+            binaryPath: binaryPath,
             version: actualVersion
         }
         

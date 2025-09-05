@@ -11,14 +11,18 @@ vi.mock('../../src/runner', () => ({
 describe('CuimpHttp', () => {
   let mockCuimp: Cuimp
   let client: CuimpHttp
-  const mockRunBinary = vi.mocked(await import('../../src/runner')).runBinary
+  let mockRunBinary: any
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     mockCuimp = {
       ensurePath: vi.fn().mockResolvedValue('/usr/bin/curl-impersonate')
     } as any
     client = new CuimpHttp(mockCuimp)
+    
+    // Get mocked functions
+    const runnerModule = await import('../../src/runner')
+    mockRunBinary = vi.mocked(runnerModule.runBinary)
   })
 
   afterEach(() => {

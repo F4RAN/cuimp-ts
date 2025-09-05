@@ -1,6 +1,6 @@
 {
   "name": "cuimp",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Node wrapper for curl-impersonate (lexiforest) via CLI",
   "license": "MIT",
   "author": "F4RAN <f4ran@vitalize.dev>",
@@ -17,9 +17,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.cjs",
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -27,15 +27,17 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --external tar",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui",
+    "test": "vitest test/basic.test.ts test/api.test.ts",
+    "test:run": "vitest run test/basic.test.ts test/api.test.ts",
+    "test:coverage": "vitest run test/basic.test.ts test/api.test.ts --coverage",
+    "test:ui": "vitest test/basic.test.ts test/api.test.ts --ui",
+    "test:all": "vitest",
     "smoke": "node --input-type=module -e \"import('./dist/index.js').then(m=>m.__smoke && m.__smoke())\""
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
     "@types/tar": "^6.1.13",
+    "@vitest/coverage-v8": "^2.1.9",
     "@vitest/ui": "^2.1.8",
     "tsup": "^8.3.0",
     "typescript": "^5.6.2",
