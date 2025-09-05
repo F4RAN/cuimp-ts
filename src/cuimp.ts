@@ -1,11 +1,7 @@
-import { CuimpDescriptor, BinaryInfo } from './types/cuimpTypes'
+import { CuimpDescriptor, BinaryInfo, CuimpOptions } from './types/cuimpTypes'
 import { validateDescriptor } from './validations/descriptorValidation'
 import { parseDescriptor } from './helpers/parser'
 
-interface CuimpOptions {
-  descriptor?: CuimpDescriptor
-  path?: string
-}
 
 class Cuimp {
   private descriptor: CuimpDescriptor
@@ -67,7 +63,6 @@ class Cuimp {
   private async isBinaryExecutable(binaryPath: string): Promise<boolean> {
     try {
       const fs = await import('fs')
-      const path = await import('path')
       
       // Check if file exists
       if (!fs.existsSync(binaryPath)) {
@@ -168,6 +163,8 @@ class Cuimp {
     this.path = path
     this.binaryInfo = undefined
   }
+   /** Convenience to ensure binary and return verified path */
+   async ensurePath(): Promise<string> { return this.verifyBinary() }
 }
 
 export { Cuimp }
