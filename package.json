@@ -1,12 +1,12 @@
 {
   "name": "cuimp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node wrapper for curl-impersonate (lexiforest) via CLI",
   "license": "MIT",
   "author": "F4RAN <f4ran@vitalize.dev>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/f4ran/cuimp.git"
+    "url": "git+https://github.com/F4RAN/cuimp-ts.git"
   },
   "engines": {
     "node": ">=18.17"
