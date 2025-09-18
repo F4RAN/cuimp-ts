@@ -38,9 +38,13 @@ vi.mock('tar', () => ({
   extract: vi.fn()
 }))
 
+// Mock fetch
+global.fetch = vi.fn()
+
 describe('parseDescriptor', () => {
   let mockGetLatestRelease: any
   let mockFs: any
+  let mockFetch: any
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -51,6 +55,13 @@ describe('parseDescriptor', () => {
     
     mockGetLatestRelease = vi.mocked(connectorModule.getLatestRelease)
     mockFs = vi.mocked(fsModule.default)
+    mockFetch = vi.mocked(global.fetch)
+    
+    // Setup default fetch mock
+    mockFetch.mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+    })
   })
 
   afterEach(() => {
@@ -74,15 +85,7 @@ describe('parseDescriptor', () => {
 
   it('should download binary if not found locally', async () => {
     mockFs.existsSync.mockReturnValue(false)
-    mockGetLatestRelease.mockResolvedValue({
-      tag_name: 'v1.0.0',
-      assets: [
-        {
-          name: 'curl-impersonate-chrome-linux-x64.tar.gz',
-          browser_download_url: 'https://github.com/example/releases/download/v1.0.0/curl-impersonate-chrome-linux-x64.tar.gz'
-        }
-      ]
-    })
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { 
       browser: 'chrome', 
@@ -99,6 +102,7 @@ describe('parseDescriptor', () => {
 
   it('should handle empty descriptor', async () => {
     mockFs.existsSync.mockReturnValue(false)
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
     
     const descriptor: CuimpDescriptor = {}
     const result = await parseDescriptor(descriptor)
@@ -109,15 +113,7 @@ describe('parseDescriptor', () => {
 
   it('should handle partial descriptor', async () => {
     mockFs.existsSync.mockReturnValue(false)
-    mockGetLatestRelease.mockResolvedValue({
-      tag_name: 'v1.0.0',
-      assets: [
-        {
-          name: 'curl-impersonate-chrome-linux-x64.tar.gz',
-          browser_download_url: 'https://github.com/example/releases/download/v1.0.0/curl-impersonate-chrome-linux-x64.tar.gz'
-        }
-      ]
-    })
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
     const result = await parseDescriptor(descriptor)
@@ -128,10 +124,7 @@ describe('parseDescriptor', () => {
 
   it('should throw error for unsupported browser', async () => {
     mockFs.existsSync.mockReturnValue(false)
-    mockGetLatestRelease.mockResolvedValue({
-      tag_name: 'v1.0.0',
-      assets: []
-    })
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { browser: 'unsupported' }
     
@@ -140,10 +133,7 @@ describe('parseDescriptor', () => {
 
   it('should throw error for unsupported platform', async () => {
     mockFs.existsSync.mockReturnValue(false)
-    mockGetLatestRelease.mockResolvedValue({
-      tag_name: 'v1.0.0',
-      assets: []
-    })
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { 
       browser: 'chrome', 
@@ -155,10 +145,7 @@ describe('parseDescriptor', () => {
 
   it('should throw error for unsupported architecture', async () => {
     mockFs.existsSync.mockReturnValue(false)
-    mockGetLatestRelease.mockResolvedValue({
-      tag_name: 'v1.0.0',
-      assets: []
-    })
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { 
       browser: 'chrome', 
@@ -179,10 +166,7 @@ describe('parseDescriptor', () => {
 
   it('should handle missing assets in release', async () => {
     mockFs.existsSync.mockReturnValue(false)
-    mockGetLatestRelease.mockResolvedValue({
-      tag_name: 'v1.0.0',
-      assets: []
-    })
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
     
@@ -191,19 +175,7 @@ describe('parseDescriptor', () => {
 
   it('should handle multiple assets and select correct one', async () => {
     mockFs.existsSync.mockReturnValue(false)
-    mockGetLatestRelease.mockResolvedValue({
-      tag_name: 'v1.0.0',
-      assets: [
-        {
-          name: 'curl-impersonate-chrome-linux-x64.tar.gz',
-          browser_download_url: 'https://github.com/example/releases/download/v1.0.0/curl-impersonate-chrome-linux-x64.tar.gz'
-        },
-        {
-          name: 'curl-impersonate-firefox-linux-x64.tar.gz',
-          browser_download_url: 'https://github.com/example/releases/download/v1.0.0/curl-impersonate-firefox-linux-x64.tar.gz'
-        }
-      ]
-    })
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { 
       browser: 'chrome', 

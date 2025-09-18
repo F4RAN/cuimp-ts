@@ -154,8 +154,16 @@ const downloadAndExtractBinary = async (
         const latestVersion = await getLatestRelease()
         const actualVersion = version === 'latest' ? latestVersion.replace(/^v/, '') : version.replace(/^v/, '')
         
-        // Construct download URL
-        const assetName = `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
+        // Construct download URL with correct naming convention
+        let assetName: string
+        if (platform === 'linux') {
+            // Linux uses specific naming: x86_64-linux-gnu, aarch64-linux-gnu, etc.
+            const linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
+            assetName = `curl-impersonate-${latestVersion}.${linuxArch}-linux-gnu.tar.gz`
+        } else {
+            // Other platforms use the original naming
+            assetName = `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
+        }
         const downloadUrl = `https://github.com/lexiforest/curl-impersonate/releases/download/${latestVersion}/${assetName}`
         
         // Download the binary
