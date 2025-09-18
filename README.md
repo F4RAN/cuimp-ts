@@ -303,6 +303,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Links
 
-- [GitHub Repository](https://github.com/f4ran/cuimp)
-- [curl-impersonate](https://github.com/lwthiker/curl-impersonate)
+- [GitHub Repository](https://github.com/f4ran/cuimp-ts)
+- [curl-impersonate](https://github.com/lexiforest/curl-impersonate)
 - [npm Package](https://www.npmjs.com/package/cuimp)
