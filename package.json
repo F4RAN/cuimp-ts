@@ -1,6 +1,6 @@
 {
   "name": "cuimp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Node wrapper for curl-impersonate (lexiforest) via CLI",
   "license": "MIT",
   "author": "F4RAN <f4ran@vitalize.dev>",
