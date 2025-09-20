@@ -3,6 +3,7 @@ import { CuimpDescriptor, BinaryInfo } from "../types/cuimpTypes"
 import { getLatestRelease } from "./connector"
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import { extract } from "tar"
 import { fileURLToPath } from 'url'
 
@@ -126,14 +127,16 @@ const findExistingBinary = (browser: string = ''): string | null => {
         })
         : BINARY_PATTERNS
 
-    // Get the package binaries directory dynamically
+    // Get the user's home directory for binaries (primary location)
+    const homeDir = os.homedir()
+    const homeBinariesDir = path.resolve(homeDir, '.cuimp', 'binaries')
+    
+    // Get the package binaries directory dynamically (fallback)
     const packageDir = getPackageDir()
     const packageBinariesDir = path.resolve(packageDir, 'cuimp/binaries')
 
-    // Create search paths including the package binaries directory
-    const searchPaths = packageBinariesDir 
-        ? [packageBinariesDir, ...BINARY_SEARCH_PATHS]
-        : BINARY_SEARCH_PATHS
+    // Create search paths including both directories
+    const searchPaths = [homeBinariesDir, packageBinariesDir, ...BINARY_SEARCH_PATHS]
 
     for (const searchPath of searchPaths) {
         for (const pattern of patternsToSearch) {
@@ -220,18 +223,18 @@ const downloadAndExtractBinary = async (
         const arrayBuffer = await response.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
         
-        // Find the package directory (where this module is installed)
-        const packageDir = getPackageDir()
+        // Use user's home directory for binaries to avoid permission issues
+        const homeDir = os.homedir()
+        const binariesDir = path.resolve(homeDir, '.cuimp', 'binaries')
         
-        // Save to temporary file in the package directory
-        const tempFileName = path.resolve(packageDir, `${browser}-${architecture}-${platform}.tar.gz`)
-        fs.writeFileSync(tempFileName, buffer)
-        
-        // Create binaries directory in node_modules if it doesn't exist
-        const binariesDir = path.resolve(packageDir, 'cuimp/binaries')
+        // Create binaries directory if it doesn't exist
         if (!fs.existsSync(binariesDir)) {
             fs.mkdirSync(binariesDir, { recursive: true })
         }
+        
+        // Save to temporary file in the binaries directory
+        const tempFileName = path.resolve(binariesDir, `${browser}-${architecture}-${platform}.tar.gz`)
+        fs.writeFileSync(tempFileName, buffer)
         
         // Extract the binary to the binaries directory
         console.log(`Extracting ${tempFileName} to ${binariesDir}...`)
