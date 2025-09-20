@@ -128,7 +128,7 @@ const findExistingBinary = (browser: string = ''): string | null => {
 
     // Get the package binaries directory dynamically
     const packageDir = getPackageDir()
-    const packageBinariesDir = path.resolve(packageDir, 'binaries')
+    const packageBinariesDir = path.resolve(packageDir, 'cuimp/binaries')
 
     // Create search paths including the package binaries directory
     const searchPaths = packageBinariesDir 
@@ -228,7 +228,7 @@ const downloadAndExtractBinary = async (
         fs.writeFileSync(tempFileName, buffer)
         
         // Create binaries directory in node_modules if it doesn't exist
-        const binariesDir = path.resolve(packageDir, 'binaries')
+        const binariesDir = path.resolve(packageDir, 'cuimp/binaries')
         if (!fs.existsSync(binariesDir)) {
             fs.mkdirSync(binariesDir, { recursive: true })
         }
