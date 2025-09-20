@@ -38,6 +38,49 @@ function tryParseBody(buf: Buffer, headers: Record<string, string>) {
   return buf.toString('utf8');
 }
 
+function normalizeProxyUrl(proxy: string): string {
+  // If proxy already has a scheme, return as-is
+  if (proxy.includes('://')) {
+    return proxy;
+  }
+  
+  // Handle different proxy formats
+  if (proxy.startsWith('socks4://') || proxy.startsWith('socks5://')) {
+    return proxy;
+  }
+  
+  // Default to HTTP proxy if no scheme specified
+  // Handle cases like "proxy.example.com:8080" or "user:pass@proxy.example.com:8080"
+  if (proxy.includes('@')) {
+    // Has authentication: user:pass@host:port
+    return `http://${proxy}`;
+  } else {
+    // No authentication: host:port
+    return `http://${proxy}`;
+  }
+}
+
+function getProxyFromEnvironment(): string | undefined {
+  // Check common proxy environment variables
+  const proxyVars = [
+    'HTTP_PROXY',
+    'http_proxy',
+    'HTTPS_PROXY', 
+    'https_proxy',
+    'ALL_PROXY',
+    'all_proxy'
+  ];
+  
+  for (const varName of proxyVars) {
+    const value = process.env[varName];
+    if (value) {
+      return value;
+    }
+  }
+  
+  return undefined;
+}
+
 export class CuimpHttp implements CuimpInstance {
   constructor(private core: Cuimp, private defaults: Partial<CuimpRequestConfig> = {}) {}
 
@@ -72,8 +115,12 @@ export class CuimpHttp implements CuimpInstance {
     if (maxRedirects > 0) args.push('--location', '--max-redirs', String(maxRedirects));
 
     // Proxy
-    const proxy = config.proxy ?? this.defaults.proxy;
-    if (proxy) args.push('--proxy', proxy);
+    const proxy = config.proxy ?? this.defaults.proxy ?? getProxyFromEnvironment();
+    if (proxy) {
+      // Handle different proxy types and authentication
+      const normalizedProxy = normalizeProxyUrl(proxy);
+      args.push('--proxy', normalizedProxy);
+    }
 
     // Insecure TLS
     const insecure = config.insecureTLS ?? this.defaults.insecureTLS;

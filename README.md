@@ -10,6 +10,8 @@ A Node.js wrapper for [curl-impersonate](https://github.com/lwthiker/curl-impers
 - 🎯 **TypeScript Support**: Full type definitions included
 - 🔄 **Auto Binary Management**: Automatically downloads and manages curl-impersonate binaries
 - 🌐 **Cross-Platform**: Works on Linux, macOS, and Windows
+- 🔒 **Proxy Support**: Built-in support for HTTP, HTTPS, and SOCKS proxies with authentication
+- 📁 **Clean Installation**: Binaries stored in package directory, not your project root
 
 ## Installation
 
@@ -38,6 +40,72 @@ const client = createCuimpHttp({
 })
 
 const data = await client.get('https://api.example.com/users')
+```
+
+## Project Usage Examples
+
+### Web Scraping with Browser Impersonation
+
+```javascript
+import { get, createCuimpHttp } from 'cuimp'
+
+// Create a client that mimics Chrome 123
+const scraper = createCuimpHttp({
+  descriptor: { browser: 'chrome', version: '123' }
+})
+
+// Scrape a website that blocks regular requests
+const response = await scraper.get('https://example.com/protected-content', {
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+  }
+})
+
+console.log('Scraped content:', response.data)
+```
+
+### API Testing with Different Browsers
+
+```javascript
+import { createCuimpHttp } from 'cuimp'
+
+// Test your API with different browser signatures
+const browsers = ['chrome', 'firefox', 'safari', 'edge']
+
+for (const browser of browsers) {
+  const client = createCuimpHttp({
+    descriptor: { browser, version: 'latest' }
+  })
+  
+  const response = await client.get('https://your-api.com/test')
+  console.log(`${browser}: ${response.status}`)
+}
+```
+
+### Using with Proxies
+
+```javascript
+import { request } from 'cuimp'
+
+// HTTP proxy
+const response1 = await request({
+  url: 'https://httpbin.org/ip',
+  proxy: 'http://proxy.example.com:8080'
+})
+
+// SOCKS5 proxy with authentication
+const response2 = await request({
+  url: 'https://httpbin.org/ip',
+  proxy: 'socks5://user:pass@proxy.example.com:1080'
+})
+
+// Automatic proxy detection from environment variables
+// HTTP_PROXY, HTTPS_PROXY, ALL_PROXY
+const response3 = await request({
+  url: 'https://httpbin.org/ip'
+  // Will automatically use HTTP_PROXY if set
+})
 ```
 
 ## API Reference
@@ -167,7 +235,9 @@ interface CuimpRequestConfig {
   data?: any
   timeout?: number
   maxRedirects?: number
-  followRedirects?: boolean
+  proxy?: string  // HTTP, HTTPS, or SOCKS proxy URL
+  insecureTLS?: boolean  // Skip TLS certificate verification
+  signal?: AbortSignal  // Request cancellation
 }
 ```
 
@@ -281,17 +351,122 @@ try {
 
 Cuimp automatically manages curl-impersonate binaries:
 
-1. **First Run**: Downloads the appropriate binary for your platform
-2. **Verification**: Checks binary integrity and permissions
-3. **Caching**: Stores binaries locally for future use
-4. **Updates**: Can re-download if binary is corrupted
+1. **Automatic Download**: Downloads the appropriate binary for your platform on first use
+2. **Force Download**: Always downloads fresh binaries to ensure consistency
+3. **Verification**: Checks binary integrity and permissions
+4. **Clean Storage**: Binaries are stored in `node_modules/cuimp/binaries/` (not in your project root)
+5. **Cross-Platform**: Automatically detects your platform and architecture
 
-Binaries are stored in the `binaries/` directory relative to your project.
+### Binary Storage Location
+
+- **Development**: `./node_modules/cuimp/binaries/`
+- **Production**: `./node_modules/cuimp/binaries/`
+- **No Project Pollution**: Your project directory stays clean
+
+### Supported Proxy Formats
+
+```javascript
+// HTTP proxy
+proxy: 'http://proxy.example.com:8080'
+
+// HTTPS proxy
+proxy: 'https://proxy.example.com:8080'
+
+// SOCKS4 proxy
+proxy: 'socks4://proxy.example.com:1080'
+
+// SOCKS5 proxy
+proxy: 'socks5://proxy.example.com:1080'
+
+// Proxy with authentication
+proxy: 'http://username:password@proxy.example.com:8080'
+proxy: 'socks5://username:password@proxy.example.com:1080'
+
+// Automatic from environment variables
+// HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, http_proxy, https_proxy, all_proxy
+```
+
+## Important Notes
+
+### Force Download Behavior
+
+Cuimp **always downloads fresh binaries** on first use, regardless of what's already installed on your system. This ensures:
+
+- ✅ **Consistency**: All users get the same binary versions
+- ✅ **Reliability**: No dependency on system-installed binaries
+- ✅ **Security**: Fresh downloads with verified checksums
+- ✅ **Simplicity**: No need to manage system dependencies
+
+### Environment Variables
+
+Cuimp automatically detects and uses these proxy environment variables:
+
+```bash
+# Set proxy for all requests
+export HTTP_PROXY=http://proxy.example.com:8080
+export HTTPS_PROXY=https://proxy.example.com:8080
+export ALL_PROXY=socks5://proxy.example.com:1080
+
+# Or use lowercase variants
+export http_proxy=http://proxy.example.com:8080
+export https_proxy=https://proxy.example.com:8080
+export all_proxy=socks5://proxy.example.com:1080
+```
 
 ## Requirements
 
 - Node.js >= 18.17
-- Internet connection (for initial binary download)
+- Internet connection (for binary download)
+
+## Troubleshooting
+
+### Common Issues
+
+**Q: Binary download fails**
+```bash
+# Check your internet connection and try again
+# The binary will be downloaded to node_modules/cuimp/binaries/
+```
+
+**Q: Proxy not working**
+```javascript
+// Make sure your proxy URL is correct
+const response = await request({
+  url: 'https://httpbin.org/ip',
+  proxy: 'http://username:password@proxy.example.com:8080'
+})
+
+// Or set environment variables
+process.env.HTTP_PROXY = 'http://proxy.example.com:8080'
+```
+
+**Q: Permission denied errors**
+```bash
+# On Unix systems, make sure the binary has execute permissions
+chmod +x node_modules/cuimp/binaries/curl-impersonate
+```
+
+**Q: Binary not found**
+```javascript
+// Force re-download by clearing the binaries directory
+rm -rf node_modules/cuimp/binaries/
+// Then run your code again - it will re-download
+```
+
+### Debug Mode
+
+Enable debug logging to see what's happening:
+
+```javascript
+// Set debug environment variable
+process.env.DEBUG = 'cuimp:*'
+
+// Or check the binary path
+import { Cuimp } from 'cuimp'
+const cuimp = new Cuimp()
+const binaryPath = await cuimp.verifyBinary()
+console.log('Binary path:', binaryPath)
+```
 
 ## License
 

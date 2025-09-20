@@ -59,7 +59,7 @@ describe('CuimpHttp', () => {
       expect(response.headers['Content-Type']).toBe('application/json')
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
-        expect.arrayContaining(['-X', 'GET', 'https://api.example.com/test']),
+        expect.arrayContaining(['--location', '--max-redirs', '10', '-i', 'https://api.example.com/test']),
         expect.any(Object)
       )
     })
@@ -206,6 +206,72 @@ describe('CuimpHttp', () => {
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining(['--proxy', 'http://proxy.example.com:8080']),
+        expect.any(Object)
+      )
+    })
+
+    it('should handle proxy without scheme', async () => {
+      const mockResponse = {
+        exitCode: 0,
+        stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
+        stderr: Buffer.from('')
+      }
+      mockRunBinary.mockResolvedValue(mockResponse)
+
+      const config: CuimpRequestConfig = {
+        url: 'https://api.example.com/test',
+        proxy: 'proxy.example.com:8080'
+      }
+
+      await client.request(config)
+
+      expect(mockRunBinary).toHaveBeenCalledWith(
+        '/usr/bin/curl-impersonate',
+        expect.arrayContaining(['--proxy', 'http://proxy.example.com:8080']),
+        expect.any(Object)
+      )
+    })
+
+    it('should handle proxy with authentication', async () => {
+      const mockResponse = {
+        exitCode: 0,
+        stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
+        stderr: Buffer.from('')
+      }
+      mockRunBinary.mockResolvedValue(mockResponse)
+
+      const config: CuimpRequestConfig = {
+        url: 'https://api.example.com/test',
+        proxy: 'user:pass@proxy.example.com:8080'
+      }
+
+      await client.request(config)
+
+      expect(mockRunBinary).toHaveBeenCalledWith(
+        '/usr/bin/curl-impersonate',
+        expect.arrayContaining(['--proxy', 'http://user:pass@proxy.example.com:8080']),
+        expect.any(Object)
+      )
+    })
+
+    it('should handle SOCKS proxy', async () => {
+      const mockResponse = {
+        exitCode: 0,
+        stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
+        stderr: Buffer.from('')
+      }
+      mockRunBinary.mockResolvedValue(mockResponse)
+
+      const config: CuimpRequestConfig = {
+        url: 'https://api.example.com/test',
+        proxy: 'socks5://proxy.example.com:1080'
+      }
+
+      await client.request(config)
+
+      expect(mockRunBinary).toHaveBeenCalledWith(
+        '/usr/bin/curl-impersonate',
+        expect.arrayContaining(['--proxy', 'socks5://proxy.example.com:1080']),
         expect.any(Object)
       )
     })
@@ -394,7 +460,7 @@ describe('CuimpHttp', () => {
       await client.get('https://api.example.com/test')
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
-        expect.arrayContaining(['-X', 'GET']),
+        expect.arrayContaining(['--location', '--max-redirs', '10', '-i']),
         expect.any(Object)
       )
     })

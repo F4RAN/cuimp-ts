@@ -12,6 +12,11 @@ vi.mock('fs', () => ({
   default: {
     existsSync: vi.fn(),
     statSync: vi.fn(),
+    writeFileSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    readdirSync: vi.fn(),
+    chmodSync: vi.fn(),
+    unlinkSync: vi.fn(),
     constants: {
       S_IXUSR: 0o100,
       S_IXGRP: 0o010,
@@ -24,6 +29,7 @@ vi.mock('fs', () => ({
 vi.mock('path', () => ({
   default: {
     join: vi.fn((...args) => args.join('/')),
+    resolve: vi.fn((...args) => args.join('/')),
     dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/') || '.'),
     basename: vi.fn((p) => p.split('/').pop() || ''),
     extname: vi.fn((p) => {
@@ -68,19 +74,16 @@ describe('parseDescriptor', () => {
     vi.restoreAllMocks()
   })
 
-  it('should return existing binary path if found', async () => {
-    const existingPath = '/usr/bin/curl-impersonate'
-    mockFs.existsSync.mockReturnValue(true)
-    mockFs.statSync.mockReturnValue({
-      isFile: () => true,
-      mode: 0o755
-    } as any)
+  it('should always download binary (force download)', async () => {
+    mockFs.existsSync.mockReturnValue(false)
+    mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
     const result = await parseDescriptor(descriptor)
 
-    expect(result.binaryPath).toBe(existingPath)
-    expect(result.isDownloaded).toBe(false)
+    expect(mockGetLatestRelease).toHaveBeenCalled()
+    expect(result.isDownloaded).toBe(true)
+    expect(result.version).toBe('1.0.0')
   })
 
   it('should download binary if not found locally', async () => {
@@ -108,7 +111,7 @@ describe('parseDescriptor', () => {
     const result = await parseDescriptor(descriptor)
 
     expect(result.binaryPath).toBeDefined()
-    expect(result.isDownloaded).toBe(false)
+    expect(result.isDownloaded).toBe(true)
   })
 
   it('should handle partial descriptor', async () => {

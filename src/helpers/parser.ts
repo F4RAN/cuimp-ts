@@ -14,7 +14,9 @@ const BINARY_SEARCH_PATHS = [
     '/sbin/',
     '/usr/sbin/',
     '/usr/local/sbin/',
-    './binaries/',  // Dedicated folder for downloaded binaries
+    // Package binaries directory (in node_modules) - will be set dynamically
+    // This will be resolved at runtime using require.resolve
+    './binaries/',  // Fallback: dedicated folder for downloaded binaries
     './',
     '../',
     '../../',
@@ -92,7 +94,17 @@ const findExistingBinary = (browser: string = ''): string | null => {
         })
         : BINARY_PATTERNS
 
-    for (const searchPath of BINARY_SEARCH_PATHS) {
+    // Get the package binaries directory dynamically
+    // In the compiled version, this file is in dist/helpers, so we go up to the package root
+    const packageDir = path.resolve(__dirname, '../../')
+    const packageBinariesDir = path.resolve(packageDir, 'binaries')
+
+    // Create search paths including the package binaries directory
+    const searchPaths = packageBinariesDir 
+        ? [packageBinariesDir, ...BINARY_SEARCH_PATHS]
+        : BINARY_SEARCH_PATHS
+
+    for (const searchPath of searchPaths) {
         for (const pattern of patternsToSearch) {
             try {
                 // Handle glob patterns
@@ -177,12 +189,16 @@ const downloadAndExtractBinary = async (
         const arrayBuffer = await response.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
         
-        // Save to temporary file
-        const tempFileName = `${browser}-${architecture}-${platform}.tar.gz`
+        // Find the package directory (where this module is installed)
+        // In the compiled version, this file is in dist/helpers, so we go up to the package root
+        const packageDir = path.resolve(__dirname, '../../')
+        
+        // Save to temporary file in the package directory
+        const tempFileName = path.resolve(packageDir, `${browser}-${architecture}-${platform}.tar.gz`)
         fs.writeFileSync(tempFileName, buffer)
         
-        // Create binaries directory if it doesn't exist
-        const binariesDir = path.resolve('./binaries')
+        // Create binaries directory in node_modules if it doesn't exist
+        const binariesDir = path.resolve(packageDir, 'binaries')
         if (!fs.existsSync(binariesDir)) {
             fs.mkdirSync(binariesDir, { recursive: true })
         }
@@ -290,17 +306,7 @@ const getSystemInfo = (): { architecture: string; platform: string } => {
  */
 export const parseDescriptor = async (descriptor: CuimpDescriptor): Promise<BinaryInfo> => {
     try {
-        // First, try to find existing binary
-        const existingBinary = findExistingBinary(descriptor.browser)
-        if (existingBinary) {
-            console.log(`Found existing binary: ${existingBinary}`)
-            return {
-                binaryPath: existingBinary,
-                isDownloaded: false
-            }
-        }
-        
-        // If no existing binary found, download one
+        // Force download - skip existing binary check
         const { architecture, platform } = getSystemInfo()
         const browser = descriptor.browser || 'chrome'
         const version = descriptor.version || 'latest'
@@ -308,7 +314,7 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor): Promise<Bina
         // Validate parameters
         validateParameters(browser, architecture, platform)
         
-        console.log(`No existing binary found. Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
+        console.log(`Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
         
         const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version)
         
