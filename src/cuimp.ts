@@ -180,12 +180,14 @@ class Cuimp {
       this.binaryInfo = await parseDescriptor(this.descriptor)
       
       if (!this.binaryInfo.binaryPath) {
-        throw new Error('Binary path not found after download')
+        throw new Error('Binary path not found after processing')
       }
 
-      console.log(`Binary downloaded: ${this.binaryInfo.binaryPath}`)
+      console.log(`Binary ready: ${this.binaryInfo.binaryPath}`)
       if (this.binaryInfo.isDownloaded) {
         console.log(`Download completed (version: ${this.binaryInfo.version})`)
+      } else {
+        console.log(`Using existing binary (version: ${this.binaryInfo.version})`)
       }
 
       return this.binaryInfo

@@ -336,7 +336,6 @@ const getSystemInfo = (): { architecture: string; platform: string } => {
  */
 export const parseDescriptor = async (descriptor: CuimpDescriptor): Promise<BinaryInfo> => {
     try {
-        // Force download - skip existing binary check
         const { architecture, platform } = getSystemInfo()
         const browser = descriptor.browser || 'chrome'
         const version = descriptor.version || 'latest'
@@ -344,7 +343,19 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor): Promise<Bina
         // Validate parameters
         validateParameters(browser, architecture, platform)
         
-        console.log(`Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
+        // First, check if a suitable binary already exists
+        const existingBinary = findExistingBinary(browser)
+        if (existingBinary) {
+            console.log(`Found existing binary: ${existingBinary}`)
+            return {
+                binaryPath: existingBinary,
+                isDownloaded: false,
+                version: extractVersionNumber(path.basename(existingBinary)).toString() || 'unknown'
+            }
+        }
+        
+        // If no existing binary found, download it
+        console.log(`No existing binary found. Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
         
         const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version)
         
