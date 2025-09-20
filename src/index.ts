@@ -72,6 +72,12 @@ export async function options<T = any>(url: string, config?: Omit<CuimpRequestCo
   return client.options<T>(url, config)
 }
 
+// Convenience function for downloading binaries
+export async function downloadBinary(options?: CuimpOptions) {
+  const cuimp = new Cuimp(options)
+  return cuimp.download()
+}
+
 
 export async function __smoke() {
   const cu = new Cuimp()

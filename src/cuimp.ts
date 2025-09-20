@@ -164,6 +164,37 @@ class Cuimp {
   }
    /** Convenience to ensure binary and return verified path */
    async ensurePath(): Promise<string> { return this.verifyBinary() }
+
+  /**
+   * Downloads the binary without verifying it
+   * Useful for pre-downloading or explicit download control
+   */
+  async download(): Promise<BinaryInfo> {
+    try {
+      // Validate descriptor if provided
+      if (Object.keys(this.descriptor).length > 0) {
+        validateDescriptor(this.descriptor)
+      }
+
+      // Parse descriptor to get binary info and download
+      this.binaryInfo = await parseDescriptor(this.descriptor)
+      
+      if (!this.binaryInfo.binaryPath) {
+        throw new Error('Binary path not found after download')
+      }
+
+      console.log(`Binary downloaded: ${this.binaryInfo.binaryPath}`)
+      if (this.binaryInfo.isDownloaded) {
+        console.log(`Download completed (version: ${this.binaryInfo.version})`)
+      }
+
+      return this.binaryInfo
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`Failed to download binary: ${errorMessage}`)
+    }
+  }
 }
 
 export { Cuimp }

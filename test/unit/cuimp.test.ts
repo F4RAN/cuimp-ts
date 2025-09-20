@@ -302,4 +302,41 @@ describe('Cuimp', () => {
       expect(result).toBe(mockBinaryPath)
     })
   })
+
+  describe('download', () => {
+    it('should download binary without verification', async () => {
+      const mockBinaryInfo = {
+        binaryPath: '/usr/bin/curl-impersonate',
+        isDownloaded: true,
+        version: '1.0.0'
+      }
+      mockParseDescriptor.mockResolvedValue(mockBinaryInfo)
+
+      const result = await cuimp.download()
+      
+      expect(result).toEqual(mockBinaryInfo)
+      expect(mockParseDescriptor).toHaveBeenCalledWith({})
+    })
+
+    it('should download binary with descriptor', async () => {
+      const mockBinaryInfo = {
+        binaryPath: '/usr/bin/curl-impersonate',
+        isDownloaded: true,
+        version: '1.0.0'
+      }
+      mockParseDescriptor.mockResolvedValue(mockBinaryInfo)
+
+      cuimp.setDescriptor({ browser: 'chrome', version: '123' })
+      const result = await cuimp.download()
+      
+      expect(result).toEqual(mockBinaryInfo)
+      expect(mockValidateDescriptor).toHaveBeenCalledWith({ browser: 'chrome', version: '123' })
+    })
+
+    it('should throw error if download fails', async () => {
+      mockParseDescriptor.mockRejectedValue(new Error('Download failed'))
+
+      await expect(cuimp.download()).rejects.toThrow('Failed to download binary: Download failed')
+    })
+  })
 })

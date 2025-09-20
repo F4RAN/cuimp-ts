@@ -108,6 +108,29 @@ const response3 = await request({
 })
 ```
 
+### Pre-downloading Binaries
+
+```javascript
+import { Cuimp, downloadBinary } from 'cuimp'
+
+// Method 1: Using Cuimp class
+const cuimp = new Cuimp({ descriptor: { browser: 'chrome' } })
+const binaryInfo = await cuimp.download()
+console.log('Downloaded:', binaryInfo.binaryPath)
+
+// Method 2: Using convenience function
+const info = await downloadBinary({ 
+  descriptor: { browser: 'firefox', version: '133' } 
+})
+
+// Pre-download multiple browsers for offline use
+const browsers = ['chrome', 'firefox', 'safari', 'edge']
+for (const browser of browsers) {
+  await downloadBinary({ descriptor: { browser } })
+  console.log(`${browser} binary ready`)
+}
+```
+
 ## API Reference
 
 ### Convenience Functions
@@ -143,6 +166,19 @@ Make a HEAD request.
 
 #### `options(url, config?)`
 Make an OPTIONS request.
+
+#### `downloadBinary(options?)`
+Download curl-impersonate binary without making HTTP requests.
+
+```javascript
+// Download default binary
+const info = await downloadBinary()
+
+// Download specific browser binary
+const chromeInfo = await downloadBinary({ 
+  descriptor: { browser: 'chrome', version: '123' } 
+})
+```
 
 ### HTTP Client
 
@@ -193,6 +229,9 @@ const info = await cuimp.verifyBinary()
 
 // Build command preview
 const command = cuimp.buildCommandPreview('https://example.com', 'GET')
+
+// Download binary without verification
+const binaryInfo = await cuimp.download()
 ```
 
 #### `CuimpHttp`
