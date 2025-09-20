@@ -4,7 +4,39 @@ import { getLatestRelease } from "./connector"
 import fs from 'fs'
 import path from 'path'
 import { extract } from "tar"
+import { fileURLToPath } from 'url'
 
+/**
+ * Get the package directory path that works in both CommonJS and ES modules
+ */
+function getPackageDir(): string {
+  try {
+    // ES modules: use import.meta.url
+    if (typeof import.meta !== 'undefined' && import.meta.url) {
+      const __filename = fileURLToPath(import.meta.url)
+      const __dirname = path.dirname(__filename)
+      // In ES modules, this file is in dist/helpers, so go up to package root
+      return path.resolve(__dirname, '../../')
+    }
+  } catch (error) {
+    // Fallback for CommonJS
+  }
+  
+  // CommonJS: use __dirname
+  if (typeof __dirname !== 'undefined') {
+    // In CommonJS, this file is in dist/helpers, so go up to package root
+    return path.resolve(__dirname, '../../')
+  }
+  
+  // Ultimate fallback: try to resolve package.json
+  try {
+    const packageJsonPath = require.resolve('../../package.json')
+    return path.dirname(packageJsonPath)
+  } catch (error) {
+    // Last resort: assume current working directory
+    return process.cwd()
+  }
+}
 
 // Binary search paths in order of preference
 const BINARY_SEARCH_PATHS = [
@@ -95,8 +127,7 @@ const findExistingBinary = (browser: string = ''): string | null => {
         : BINARY_PATTERNS
 
     // Get the package binaries directory dynamically
-    // In the compiled version, this file is in dist/helpers, so we go up to the package root
-    const packageDir = path.resolve(__dirname, '../../')
+    const packageDir = getPackageDir()
     const packageBinariesDir = path.resolve(packageDir, 'binaries')
 
     // Create search paths including the package binaries directory
@@ -190,8 +221,7 @@ const downloadAndExtractBinary = async (
         const buffer = Buffer.from(arrayBuffer)
         
         // Find the package directory (where this module is installed)
-        // In the compiled version, this file is in dist/helpers, so we go up to the package root
-        const packageDir = path.resolve(__dirname, '../../')
+        const packageDir = getPackageDir()
         
         // Save to temporary file in the package directory
         const tempFileName = path.resolve(packageDir, `${browser}-${architecture}-${platform}.tar.gz`)
