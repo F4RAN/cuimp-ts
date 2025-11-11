@@ -23,10 +23,13 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "tsconfig.json"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --external tar",
+    "prepare": "npm run build",
     "test": "vitest test/basic.test.ts test/api.test.ts",
     "test:run": "vitest run test/basic.test.ts test/api.test.ts",
     "test:coverage": "vitest run test/basic.test.ts test/api.test.ts --coverage",
