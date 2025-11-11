@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*' # 当推送 v* 标签时触发（如 v1.3.0）
+      - 'v*' # Triggered when pushing v* tags (e.g., v1.3.0)
 
 jobs:
   build-and-release:
