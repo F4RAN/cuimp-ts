@@ -169,51 +169,78 @@ export class CuimpHttp implements CuimpInstance {
     // Execute
     const result = await runBinary(bin, args, { timeout: config.timeout ?? this.defaults.timeout, signal: config.signal });
 
-    // curl outputs:
+    // curl outputs with -i flag:
     // [HTTP/1.1 200 OK\r\nHeaders...\r\n\r\n]...body...
-    // There can be multiple header blocks with redirects; pick the last.
+    // With redirects: HTTP/1.1 302...\r\n\r\nHTTP/1.1 200...\r\n\r\nbody
     
-    // Find all header/body separators in the raw Buffer
-    // Look for \r\n\r\n or \n\n that separates headers from body
     const stdoutBuf = result.stdout;
-    const separator1 = Buffer.from('\r\n\r\n');
-    const separator2 = Buffer.from('\n\n');
+    const httpMarker = Buffer.from('HTTP/');
     
-    // Find all occurrences of separators
-    const separatorPositions: Array<{index: number, length: number}> = [];
-    
-    for (let i = 0; i < stdoutBuf.length; i++) {
-      if (stdoutBuf.slice(i, i + 4).equals(separator1)) {
-        separatorPositions.push({index: i, length: 4});
-        i += 3; // Skip past this separator
-      } else if (stdoutBuf.slice(i, i + 2).equals(separator2)) {
-        separatorPositions.push({index: i, length: 2});
-        i += 1; // Skip past this separator
+    // Find all positions where HTTP responses start
+    const httpStarts: number[] = [];
+    for (let i = 0; i <= stdoutBuf.length - 5; i++) {
+      if (stdoutBuf.slice(i, i + 5).equals(httpMarker)) {
+        httpStarts.push(i);
       }
     }
     
-    if (separatorPositions.length === 0) {
+    if (httpStarts.length === 0) {
       const previewText = stdoutBuf.toString('utf8', 0, Math.min(500, stdoutBuf.length));
-      throw new Error(`Unexpected response format:\n${previewText}`);
+      throw new Error(`No HTTP response found:\n${previewText}`);
     }
-
-    // Use the last separator to split headers and body
-    const lastSeparator = separatorPositions[separatorPositions.length - 1];
-    const headerBuf = stdoutBuf.slice(0, lastSeparator.index);
-    const rawBody = stdoutBuf.slice(lastSeparator.index + lastSeparator.length);
+    
+    // For each HTTP response block, find its end (first \r\n\r\n or \n\n after HTTP/)
+    const separator1 = Buffer.from('\r\n\r\n');
+    const separator2 = Buffer.from('\n\n');
+    
+    let lastHeaderEnd = 0;
+    let lastHeaderEndLength = 0;
+    
+    for (const httpStart of httpStarts) {
+      // Search for separator starting from this HTTP block
+      let found = false;
+      for (let i = httpStart; i < stdoutBuf.length; i++) {
+        if (i + 4 <= stdoutBuf.length && stdoutBuf.slice(i, i + 4).equals(separator1)) {
+          lastHeaderEnd = i;
+          lastHeaderEndLength = 4;
+          found = true;
+          break;
+        } else if (i + 2 <= stdoutBuf.length && stdoutBuf.slice(i, i + 2).equals(separator2)) {
+          lastHeaderEnd = i;
+          lastHeaderEndLength = 2;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // This HTTP block has no proper ending, might be malformed
+        lastHeaderEnd = stdoutBuf.length;
+        lastHeaderEndLength = 0;
+      }
+    }
+    
+    // Everything before lastHeaderEnd is headers, everything after is body
+    const headerBuf = stdoutBuf.slice(0, lastHeaderEnd);
+    const rawBody = stdoutBuf.slice(lastHeaderEnd + lastHeaderEndLength);
     
     // Decode headers only (safe as HTTP headers are ASCII/UTF-8)
     const headerText = headerBuf.toString('utf8');
     
     // Handle multiple header blocks (redirects)
-    // Split by double newline and find blocks that start with HTTP/
-    const headerBlocks = headerText.split(/\r?\n\r?\n/).filter(block => 
-      block.trim() && /^HTTP\/\d\.\d \d{3}/.test(block)
+    // Split by HTTP/ and process each block
+    const httpBlocks = headerText.split(/(?=HTTP\/)/);
+    const validBlocks = httpBlocks.filter(block => 
+      block.trim() && /^HTTP\/\d\.\d \d{3}/.test(block.trim())
     );
-    const lastHeader = headerBlocks.length ? headerBlocks[headerBlocks.length - 1] : headerText;
+    
+    // Use the last valid HTTP response block
+    const lastBlock = validBlocks.length ? validBlocks[validBlocks.length - 1] : headerText;
+    
+    // Remove the trailing separator from lastBlock if present
+    const cleanBlock = lastBlock.replace(/\r?\n\r?\n$/, '');
 
     // Parse status + headers
-    const headerLines = lastHeader.split(/\r?\n/);
+    const headerLines = cleanBlock.split(/\r?\n/);
     const statusLine = headerLines.shift() || 'HTTP/1.1 200 OK';
     const m = statusLine.match(/^HTTP\/\d\.\d\s+(\d{3})\s+(.*)$/);
     const status = m ? parseInt(m[1], 10) : 200;
