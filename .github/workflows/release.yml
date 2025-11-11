@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送 v* 标签时触发（如 v1.3.0）
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run tests
+        run: npm run test:run
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Create Release Archive
+        run: |
+          mkdir -p release
+          cp -r dist release/
+          cp -r src release/
+          cp package.json release/
+          cp package-lock.json release/
+          cp README.md release/
+          cp LICENSE release/ 2>/dev/null || true
+          cd release
+          tar -czf ../cuimp-ts-dist.tar.gz .
+          cd ..
+          # 也创建一个只包含 dist 的轻量版本
+          tar -czf cuimp-ts-dist-only.tar.gz -C release/dist .
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cuimp-ts-dist.tar.gz
+            cuimp-ts-dist-only.tar.gz
+          generate_release_notes: true
+          body: |
+            ## 使用方法
+            
+            ### 方式 1: 从 GitHub 安装（推荐）
+            ```bash
+            npm install ma-joel/cuimp-ts#${{ github.ref_name }}
+            ```
+            
+            ### 方式 2: 手动下载并安装
+            下载 `cuimp-ts-dist.tar.gz`，解压后：
+            ```bash
+            npm install ./path/to/cuimp-ts
+            ```
+            
+            ### 方式 3: package.json 中引用
+            ```json
+            {
+              "dependencies": {
+                "cuimp": "github:ma-joel/cuimp-ts#${{ github.ref_name }}"
+              }
+            }
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
