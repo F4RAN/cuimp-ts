@@ -525,5 +525,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 Thanks to these awesome people:
 
-- [@ma-joel](https://github.com/ma-joel) - Non-UTF-8 encoding support, redirect fixes
+- [@ma-joel](https://github.com/ma-joel) - CI build, non-UTF-8 encoding support, redirect fixes
 - [@F4RAN](https://github.com/F4RAN) - Original author and maintainer
