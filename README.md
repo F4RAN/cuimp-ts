@@ -520,3 +520,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [GitHub Repository](https://github.com/f4ran/cuimp-ts)
 - [curl-impersonate](https://github.com/lexiforest/curl-impersonate)
 - [npm Package](https://www.npmjs.com/package/cuimp)
+
+# Contributors
+
+Thanks to these awesome people:
+
+- [@ma-joel](https://github.com/ma-joel) - Non-UTF-8 encoding support, redirect fixes
+- [@F4RAN](https://github.com/F4RAN) - Original author and maintainer
