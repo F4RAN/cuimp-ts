@@ -27,7 +27,14 @@ import type { CuimpOptions, CuimpRequestConfig } from './types/cuimpTypes'
 // Factory function for creating HTTP client instances
 export function createCuimpHttp(options?: CuimpOptions) {
   const core = new Cuimp(options)
-  return new CuimpHttp(core)
+  const defaults: Partial<CuimpRequestConfig> = {}
+  
+  // Pass extraCurlArgs from options to defaults if provided
+  if (options?.extraCurlArgs) {
+    defaults.extraCurlArgs = options.extraCurlArgs
+  }
+  
+  return new CuimpHttp(core, defaults)
 }
 
 // Convenience function for quick HTTP requests

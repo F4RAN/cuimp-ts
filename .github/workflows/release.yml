@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送 v* 标签时触发（如 v1.3.0）
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run tests
+        run: npm run test:run
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Create Release Archive
+        run: |
+          mkdir -p release
+          cp -r dist release/
+          cp package.json release/
+          cp package-lock.json release/
+          cp README.md release/
+          cp LICENSE release/ 2>/dev/null || true
+          cd release
+          tar -czf ../cuimp-ts-v${{ github.ref_name }}.tar.gz .
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: cuimp-ts-v${{ github.ref_name }}.tar.gz
+          generate_release_notes: true
+          body: |
+            ## 安装方法
+            
+            ### 推荐方式: 直接从 GitHub 安装
+            
+            npm 会自动从源码构建（通过 prepare 脚本）：
+            
+            ```bash
+            npm install github:ma-joel/cuimp-ts#${{ github.ref_name }}
+            ```
+            
+            或在 `package.json` 中：
+            
+            ```json
+            {
+              "dependencies": {
+                "cuimp": "github:ma-joel/cuimp-ts#${{ github.ref_name }}"
+              }
+            }
+            ```
+            
+            ### 备用方式: 手动安装（已预构建）
+            
+            如果不想自动构建，可下载 `cuimp-ts-v${{ github.ref_name }}.tar.gz`（已包含 dist）：
+            
+            ```bash
+            wget https://github.com/ma-joel/cuimp-ts/releases/download/${{ github.ref_name }}/cuimp-ts-v${{ github.ref_name }}.tar.gz
+            tar -xzf cuimp-ts-v${{ github.ref_name }}.tar.gz -C ./cuimp
+            npm install ./cuimp
+            ```
+            
+            ## 新功能
+            
+            - ✨ Raw buffer 支持（GBK 等非 UTF-8 编码）
+            - 🔧 改进的响应解析（处理 body 中的分隔符）
+            - 🍪 extraCurlArgs 支持（cookie jar 等自定义参数）
+            - 🔀 修复多重定向处理
+            - 📦 自动构建（npm install 时）
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
