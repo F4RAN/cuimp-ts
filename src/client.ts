@@ -172,21 +172,35 @@ export class CuimpHttp implements CuimpInstance {
     // curl outputs:
     // [HTTP/1.1 200 OK\r\nHeaders...\r\n\r\n]...body...
     // There can be multiple header blocks with redirects; pick the last.
-    const text = result.stdout.toString('utf8');
-
-    // Split on header/body boundaries; keep last block as response
-    const blocks = text.split(/\r?\n\r?\n/);
-    if (blocks.length < 2) {
-      throw new Error(`Unexpected response format:\n${text.slice(0, 500)}`);
+    
+    // Find the header/body separator in the raw Buffer
+    // Look for \r\n\r\n or \n\n that separates headers from body
+    const stdoutBuf = result.stdout;
+    let headerEndIndex = stdoutBuf.indexOf(Buffer.from('\r\n\r\n'));
+    let headerEndLength = 4;
+    
+    if (headerEndIndex === -1) {
+      headerEndIndex = stdoutBuf.indexOf(Buffer.from('\n\n'));
+      headerEndLength = 2;
+    }
+    
+    if (headerEndIndex === -1) {
+      const previewText = stdoutBuf.toString('utf8', 0, Math.min(500, stdoutBuf.length));
+      throw new Error(`Unexpected response format:\n${previewText}`);
     }
 
-    // Collect header sections that start with HTTP/
-    const headerSections = [];
-    for (let i = 0; i < blocks.length - 1; i++) {
-      if (/^HTTP\/\d\.\d \d{3}/.test(blocks[i])) headerSections.push(blocks[i]);
-    }
-    const lastHeader = headerSections.length ? headerSections[headerSections.length - 1] : blocks[0];
-    const rawBody = Buffer.from(blocks[blocks.length - 1], 'utf8');
+    // Split headers (decode as UTF-8) and body (keep as raw Buffer)
+    const headerBuf = stdoutBuf.slice(0, headerEndIndex);
+    const rawBody = stdoutBuf.slice(headerEndIndex + headerEndLength);
+    
+    // Decode headers only
+    const headerText = headerBuf.toString('utf8');
+    
+    // Handle multiple header blocks (redirects)
+    const headerBlocks = headerText.split(/\r?\n\r?\n/).filter(block => 
+      block.trim() && /^HTTP\/\d\.\d \d{3}/.test(block)
+    );
+    const lastHeader = headerBlocks.length ? headerBlocks[headerBlocks.length - 1] : headerText;
 
     // Parse status + headers
     const headerLines = lastHeader.split(/\r?\n/);
