@@ -156,6 +156,12 @@ export class CuimpHttp implements CuimpInstance {
       }
     }
 
+    // Extra curl arguments (from config or defaults)
+    const extraArgs = config.extraCurlArgs ?? this.defaults.extraCurlArgs;
+    if (extraArgs && extraArgs.length > 0) {
+      args.push(...extraArgs);
+    }
+
     // Always capture headers: use -D - (dump headers to stdout) won't work nicely;
     // Instead use: -i to include headers in output, then split.
     args.push('-i');
