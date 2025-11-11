@@ -72,7 +72,7 @@ jobs:
             
             ```bash
             wget https://github.com/F4RAN/cuimp-ts/releases/download/${{ github.ref_name }}/cuimp-ts-v${{ github.ref_name }}.tar.gz
-            tar -xzf cuimp-ts-v${{ github.ref_name }}.tar.gz -C ./cuimp
+            tar -xzf cuimp-ts-${{ github.ref_name }}.tar.gz -C ./cuimp
             npm install ./cuimp
             ```
             
