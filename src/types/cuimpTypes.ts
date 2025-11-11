@@ -26,6 +26,7 @@ export interface CuimpRequestConfig {
   proxy?: string;
   insecureTLS?: boolean;
   signal?: AbortSignal;
+  extraCurlArgs?: string[]; // Additional curl arguments like --cookie, --cookie-jar, etc.
 }
 
 export interface CuimpResponse<T = any> {
@@ -46,6 +47,7 @@ export interface CuimpResponse<T = any> {
 export interface CuimpOptions {
   descriptor?: CuimpDescriptor
   path?: string
+  extraCurlArgs?: string[] // Global curl arguments applied to all requests
 }
 
 
