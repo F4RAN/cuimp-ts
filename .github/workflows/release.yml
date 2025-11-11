@@ -51,7 +51,7 @@ jobs:
             npm 会自动从源码构建（通过 prepare 脚本）：
             
             ```bash
-            npm install github:ma-joel/cuimp-ts#${{ github.ref_name }}
+            npm install github:F4RAN/cuimp-ts#${{ github.ref_name }}
             ```
             
             或在 `package.json` 中：
@@ -59,7 +59,7 @@ jobs:
             ```json
             {
               "dependencies": {
-                "cuimp": "github:ma-joel/cuimp-ts#${{ github.ref_name }}"
+                "cuimp": "github:F4RAN/cuimp-ts#${{ github.ref_name }}"
               }
             }
             ```
@@ -69,7 +69,7 @@ jobs:
             如果不想自动构建，可下载 `cuimp-ts-v${{ github.ref_name }}.tar.gz`（已包含 dist）：
             
             ```bash
-            wget https://github.com/ma-joel/cuimp-ts/releases/download/${{ github.ref_name }}/cuimp-ts-v${{ github.ref_name }}.tar.gz
+            wget https://github.com/F4RAN/cuimp-ts/releases/download/${{ github.ref_name }}/cuimp-ts-v${{ github.ref_name }}.tar.gz
             tar -xzf cuimp-ts-v${{ github.ref_name }}.tar.gz -C ./cuimp
             npm install ./cuimp
             ```
