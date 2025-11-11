@@ -44,17 +44,17 @@ jobs:
           files: cuimp-ts-v${{ github.ref_name }}.tar.gz
           generate_release_notes: true
           body: |
-            ## 安装方法
+            ## Installation Methods
             
-            ### 推荐方式: 直接从 GitHub 安装
+            ### Recommended: Install directly from GitHub
             
-            npm 会自动从源码构建（通过 prepare 脚本）：
+            npm will automatically build from source (via prepare script):
             
             ```bash
             npm install github:F4RAN/cuimp-ts#${{ github.ref_name }}
             ```
             
-            或在 `package.json` 中：
+            Or in `package.json`:
             
             ```json
             {
@@ -64,9 +64,9 @@ jobs:
             }
             ```
             
-            ### 备用方式: 手动安装（已预构建）
+            ### Alternative: Manual installation (pre-built)
             
-            如果不想自动构建，可下载 `cuimp-ts-v${{ github.ref_name }}.tar.gz`（已包含 dist）：
+            If you don't want automatic building, download `cuimp-ts-v${{ github.ref_name }}.tar.gz` (includes dist):
             
             ```bash
             wget https://github.com/F4RAN/cuimp-ts/releases/download/${{ github.ref_name }}/cuimp-ts-v${{ github.ref_name }}.tar.gz
@@ -74,12 +74,12 @@ jobs:
             npm install ./cuimp
             ```
             
-            ## 新功能
+            ## New Features
             
-            - ✨ Raw buffer 支持（GBK 等非 UTF-8 编码）
-            - 🔧 改进的响应解析（处理 body 中的分隔符）
-            - 🍪 extraCurlArgs 支持（cookie jar 等自定义参数）
-            - 🔀 修复多重定向处理
-            - 📦 自动构建（npm install 时）
+            - ✨ Raw buffer support (GBK and other non-UTF-8 encodings)
+            - 🔧 Improved response parsing (handles delimiters in body)
+            - 🍪 extraCurlArgs support (cookie jar and other custom parameters)
+            - 🔀 Fixed multiple redirect handling
+            - 📦 Automatic build (on npm install)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
