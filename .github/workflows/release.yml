@@ -38,7 +38,7 @@ jobs:
           cp README.md release/
           cp LICENSE release/ 2>/dev/null || true
           cd release
-          tar -czf ../cuimp-ts-v${{ github.ref_name }}.tar.gz .
+          tar -czf ../cuimp-ts-${{ github.ref_name }}.tar.gz .
           
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
