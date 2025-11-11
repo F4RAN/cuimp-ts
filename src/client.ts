@@ -173,30 +173,40 @@ export class CuimpHttp implements CuimpInstance {
     // [HTTP/1.1 200 OK\r\nHeaders...\r\n\r\n]...body...
     // There can be multiple header blocks with redirects; pick the last.
     
-    // Find the header/body separator in the raw Buffer
+    // Find all header/body separators in the raw Buffer
     // Look for \r\n\r\n or \n\n that separates headers from body
     const stdoutBuf = result.stdout;
-    let headerEndIndex = stdoutBuf.indexOf(Buffer.from('\r\n\r\n'));
-    let headerEndLength = 4;
+    const separator1 = Buffer.from('\r\n\r\n');
+    const separator2 = Buffer.from('\n\n');
     
-    if (headerEndIndex === -1) {
-      headerEndIndex = stdoutBuf.indexOf(Buffer.from('\n\n'));
-      headerEndLength = 2;
+    // Find all occurrences of separators
+    const separatorPositions: Array<{index: number, length: number}> = [];
+    
+    for (let i = 0; i < stdoutBuf.length; i++) {
+      if (stdoutBuf.slice(i, i + 4).equals(separator1)) {
+        separatorPositions.push({index: i, length: 4});
+        i += 3; // Skip past this separator
+      } else if (stdoutBuf.slice(i, i + 2).equals(separator2)) {
+        separatorPositions.push({index: i, length: 2});
+        i += 1; // Skip past this separator
+      }
     }
     
-    if (headerEndIndex === -1) {
+    if (separatorPositions.length === 0) {
       const previewText = stdoutBuf.toString('utf8', 0, Math.min(500, stdoutBuf.length));
       throw new Error(`Unexpected response format:\n${previewText}`);
     }
 
-    // Split headers (decode as UTF-8) and body (keep as raw Buffer)
-    const headerBuf = stdoutBuf.slice(0, headerEndIndex);
-    const rawBody = stdoutBuf.slice(headerEndIndex + headerEndLength);
+    // Use the last separator to split headers and body
+    const lastSeparator = separatorPositions[separatorPositions.length - 1];
+    const headerBuf = stdoutBuf.slice(0, lastSeparator.index);
+    const rawBody = stdoutBuf.slice(lastSeparator.index + lastSeparator.length);
     
-    // Decode headers only
+    // Decode headers only (safe as HTTP headers are ASCII/UTF-8)
     const headerText = headerBuf.toString('utf8');
     
     // Handle multiple header blocks (redirects)
+    // Split by double newline and find blocks that start with HTTP/
     const headerBlocks = headerText.split(/\r?\n\r?\n/).filter(block => 
       block.trim() && /^HTTP\/\d\.\d \d{3}/.test(block)
     );
