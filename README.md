@@ -1,133 +1,231 @@
-# Cuimp
+# Cuimp-rs
 
-A Node.js wrapper for [curl-impersonate](https://github.com/lwthiker/curl-impersonate) that allows you to make HTTP requests that mimic real browser behavior, bypassing many anti-bot protections.
+A Rust wrapper for [curl-impersonate](https://github.com/lwthiker/curl-impersonate) that allows you to make HTTP requests that mimic real browser behavior, bypassing many anti-bot protections.
 
 ## Features
 
 - 🚀 **Browser Impersonation**: Mimic Chrome, Firefox, Safari, and Edge browsers
-- 🔧 **Easy to Use**: Simple API similar to axios/fetch
-- 📦 **Zero Dependencies**: Only requires `tar` for binary extraction
-- 🎯 **TypeScript Support**: Full type definitions included
+- 🔧 **Easy to Use**: Simple API similar to reqwest/hyper
+- 📦 **Zero Runtime Dependencies**: Only requires `tar` extraction during setup
+- 🎯 **Full Type Safety**: Complete type definitions with Rust's type system
 - 🔄 **Auto Binary Management**: Automatically downloads and manages curl-impersonate binaries
 - 🌐 **Cross-Platform**: Works on Linux, macOS, and Windows
 - 🔒 **Proxy Support**: Built-in support for HTTP, HTTPS, and SOCKS proxies with authentication
-- 📁 **Clean Installation**: Binaries stored in package directory, not your project root
+- 📁 **Clean Installation**: Binaries stored in `~/.cuimp/binaries/`, not your project directory
+- ⚡ **Async/Await**: Built with Tokio for high-performance async operations
 
 ## Installation
 
-```bash
-npm install cuimp
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+cuimp = "0.1"
+tokio = { version = "1", features = ["full"] }
 ```
 
 ## Quick Start
 
-```javascript
-import { get, post, createCuimpHttp } from 'cuimp'
+```rust
+use cuimp::{get, post};
+use serde_json::json;
 
-// Simple GET request
-const response = await get('https://httpbin.org/headers')
-console.log(response.data)
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Simple GET request
+    let response = get("https://httpbin.org/headers").await?;
+    println!("Response: {:?}", response.data);
 
-// POST with data
-const result = await post('https://httpbin.org/post', {
-  name: 'John Doe',
-  email: 'john@example.com'
-})
+    // POST with data
+    let data = json!({
+        "name": "John Doe",
+        "email": "john@example.com"
+    });
+    let response = post("https://httpbin.org/post", Some(data)).await?;
+    println!("Response: {:?}", response.data);
 
-// Using HTTP client instance
-const client = createCuimpHttp({
-  descriptor: { browser: 'chrome', version: '123' }
-})
+    Ok(())
+}
+```
 
-const data = await client.get('https://api.example.com/users')
+## Using HTTP Client
+
+```rust
+use cuimp::{CuimpHttp, CuimpDescriptor, CuimpOptions};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let descriptor = CuimpDescriptor {
+        browser: Some("chrome".to_string()),
+        version: Some("123".to_string()),
+        ..Default::default()
+    };
+
+    let options = CuimpOptions {
+        descriptor: Some(descriptor),
+        ..Default::default()
+    };
+
+    let mut client = CuimpHttp::new(options)?;
+    let response: cuimp::CuimpResponse<serde_json::Value> =
+        client.get("https://api.example.com/users").await?;
+
+    println!("Status: {}", response.status);
+    println!("Data: {}", response.data);
+
+    Ok(())
+}
 ```
 
 ## Project Usage Examples
 
 ### Web Scraping with Browser Impersonation
 
-```javascript
-import { get, createCuimpHttp } from 'cuimp'
+```rust
+use cuimp::{CuimpHttp, CuimpDescriptor, CuimpOptions};
 
-// Create a client that mimics Chrome 123
-const scraper = createCuimpHttp({
-  descriptor: { browser: 'chrome', version: '123' }
-})
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a client that mimics Chrome 123
+    let descriptor = CuimpDescriptor {
+        browser: Some("chrome".to_string()),
+        version: Some("123".to_string()),
+        ..Default::default()
+    };
 
-// Scrape a website that blocks regular requests
-const response = await scraper.get('https://example.com/protected-content', {
-  headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-  }
-})
+    let mut scraper = CuimpHttp::new(CuimpOptions {
+        descriptor: Some(descriptor),
+        ..Default::default()
+    })?;
 
-console.log('Scraped content:', response.data)
+    // Scrape a website that blocks regular requests
+    let response: cuimp::CuimpResponse<serde_json::Value> =
+        scraper.get("https://example.com/protected-content").await?;
+
+    println!("Scraped content: {}", response.data);
+
+    Ok(())
+}
 ```
 
 ### API Testing with Different Browsers
 
-```javascript
-import { createCuimpHttp } from 'cuimp'
+```rust
+use cuimp::{CuimpHttp, CuimpDescriptor, CuimpOptions};
 
-// Test your API with different browser signatures
-const browsers = ['chrome', 'firefox', 'safari', 'edge']
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let browsers = vec!["chrome", "firefox", "safari", "edge"];
 
-for (const browser of browsers) {
-  const client = createCuimpHttp({
-    descriptor: { browser, version: 'latest' }
-  })
-  
-  const response = await client.get('https://your-api.com/test')
-  console.log(`${browser}: ${response.status}`)
+    for browser in browsers {
+        let descriptor = CuimpDescriptor {
+            browser: Some(browser.to_string()),
+            version: Some("latest".to_string()),
+            ..Default::default()
+        };
+
+        let mut client = CuimpHttp::new(CuimpOptions {
+            descriptor: Some(descriptor),
+            ..Default::default()
+        })?;
+
+        let response: cuimp::CuimpResponse<serde_json::Value> =
+            client.get("https://your-api.com/test").await?;
+
+        println!("{}: {}", browser, response.status);
+    }
+
+    Ok(())
 }
 ```
 
 ### Using with Proxies
 
-```javascript
-import { request } from 'cuimp'
+```rust
+use cuimp::{CuimpHttp, CuimpOptions, CuimpRequestConfig};
+use serde_json::Value;
 
-// HTTP proxy
-const response1 = await request({
-  url: 'https://httpbin.org/ip',
-  proxy: 'http://proxy.example.com:8080'
-})
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = CuimpHttp::new(CuimpOptions::default())?;
 
-// SOCKS5 proxy with authentication
-const response2 = await request({
-  url: 'https://httpbin.org/ip',
-  proxy: 'socks5://user:pass@proxy.example.com:1080'
-})
+    // HTTP proxy
+    let config = CuimpRequestConfig {
+        url: Some("https://httpbin.org/ip".to_string()),
+        proxy: Some("http://proxy.example.com:8080".to_string()),
+        ..Default::default()
+    };
+    let response: cuimp::CuimpResponse<Value> = client.request(config).await?;
 
-// Automatic proxy detection from environment variables
-// HTTP_PROXY, HTTPS_PROXY, ALL_PROXY
-const response3 = await request({
-  url: 'https://httpbin.org/ip'
-  // Will automatically use HTTP_PROXY if set
-})
+    // SOCKS5 proxy with authentication
+    let config = CuimpRequestConfig {
+        url: Some("https://httpbin.org/ip".to_string()),
+        proxy: Some("socks5://user:pass@proxy.example.com:1080".to_string()),
+        ..Default::default()
+    };
+    let response: cuimp::CuimpResponse<Value> = client.request(config).await?;
+
+    // Automatic proxy detection from environment variables
+    // HTTP_PROXY, HTTPS_PROXY, ALL_PROXY
+    let config = CuimpRequestConfig {
+        url: Some("https://httpbin.org/ip".to_string()),
+        // Will automatically use HTTP_PROXY if set
+        ..Default::default()
+    };
+    let response: cuimp::CuimpResponse<Value> = client.request(config).await?;
+
+    Ok(())
+}
 ```
 
 ### Pre-downloading Binaries
 
-```javascript
-import { Cuimp, downloadBinary } from 'cuimp'
+```rust
+use cuimp::{Cuimp, CuimpDescriptor, CuimpOptions, download_binary};
 
-// Method 1: Using Cuimp class
-const cuimp = new Cuimp({ descriptor: { browser: 'chrome' } })
-const binaryInfo = await cuimp.download()
-console.log('Downloaded:', binaryInfo.binaryPath)
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Method 1: Using Cuimp struct
+    let descriptor = CuimpDescriptor {
+        browser: Some("chrome".to_string()),
+        ..Default::default()
+    };
 
-// Method 2: Using convenience function
-const info = await downloadBinary({ 
-  descriptor: { browser: 'firefox', version: '133' } 
-})
+    let cuimp = Cuimp::new(CuimpOptions {
+        descriptor: Some(descriptor),
+        ..Default::default()
+    })?;
 
-// Pre-download multiple browsers for offline use
-const browsers = ['chrome', 'firefox', 'safari', 'edge']
-for (const browser of browsers) {
-  await downloadBinary({ descriptor: { browser } })
-  console.log(`${browser} binary ready`)
+    let binary_info = cuimp.download().await?;
+    println!("Downloaded: {}", binary_info.binary_path);
+
+    // Method 2: Using convenience function
+    let descriptor = CuimpDescriptor {
+        browser: Some("firefox".to_string()),
+        version: Some("133".to_string()),
+        ..Default::default()
+    };
+
+    let info = download_binary(Some(CuimpOptions {
+        descriptor: Some(descriptor),
+        ..Default::default()
+    })).await?;
+
+    // Pre-download multiple browsers for offline use
+    let browsers = vec!["chrome", "firefox", "safari", "edge"];
+    for browser in browsers {
+        let descriptor = CuimpDescriptor {
+            browser: Some(browser.to_string()),
+            ..Default::default()
+        };
+        let info = download_binary(Some(CuimpOptions {
+            descriptor: Some(descriptor),
+            ..Default::default()
+        })).await?;
+        println!("{} binary ready", browser);
+    }
+
+    Ok(())
 }
 ```
 
@@ -135,116 +233,92 @@ for (const browser of browsers) {
 
 ### Convenience Functions
 
-#### `get(url, config?)`
+#### `get(url: &str) -> Result<CuimpResponse<Value>>`
 Make a GET request.
 
-```javascript
-const response = await get('https://api.example.com/users')
-```
-
-#### `post(url, data?, config?)`
+#### `post(url: &str, data: Option<Value>) -> Result<CuimpResponse<Value>>`
 Make a POST request.
 
-```javascript
-const response = await post('https://api.example.com/users', {
-  name: 'John Doe',
-  email: 'john@example.com'
-})
-```
-
-#### `put(url, data?, config?)`
+#### `put(url: &str, data: Option<Value>) -> Result<CuimpResponse<Value>>`
 Make a PUT request.
 
-#### `patch(url, data?, config?)`
+#### `patch(url: &str, data: Option<Value>) -> Result<CuimpResponse<Value>>`
 Make a PATCH request.
 
-#### `del(url, config?)`
+#### `delete(url: &str) -> Result<CuimpResponse<Value>>`
 Make a DELETE request.
 
-#### `head(url, config?)`
+#### `head(url: &str) -> Result<CuimpResponse<Value>>`
 Make a HEAD request.
 
-#### `options(url, config?)`
+#### `options(url: &str) -> Result<CuimpResponse<Value>>`
 Make an OPTIONS request.
 
-#### `downloadBinary(options?)`
+#### `download_binary(options: Option<CuimpOptions>) -> Result<BinaryInfo>`
 Download curl-impersonate binary without making HTTP requests.
-
-```javascript
-// Download default binary
-const info = await downloadBinary()
-
-// Download specific browser binary
-const chromeInfo = await downloadBinary({ 
-  descriptor: { browser: 'chrome', version: '123' } 
-})
-```
 
 ### HTTP Client
 
-#### `createCuimpHttp(options?)`
+#### `CuimpHttp::new(options: CuimpOptions) -> Result<CuimpHttp>`
 Create an HTTP client instance.
 
-```javascript
-const client = createCuimpHttp({
-  descriptor: { browser: 'chrome', version: '123' },
-  path: '/custom/path/to/binary'
-})
+```rust
+let descriptor = CuimpDescriptor {
+    browser: Some("chrome".to_string()),
+    version: Some("123".to_string()),
+    ..Default::default()
+};
 
-// Use the client
-const response = await client.get('https://api.example.com/data')
+let client = CuimpHttp::new(CuimpOptions {
+    descriptor: Some(descriptor),
+    path: Some("/custom/path/to/binary".to_string()),
+    ..Default::default()
+})?;
 ```
 
-#### `request(config)`
+#### `request<T>(config: CuimpRequestConfig) -> Result<CuimpResponse<T>>`
 Make a request with full configuration.
 
-```javascript
-const response = await request({
-  url: 'https://api.example.com/users',
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer token',
-    'Content-Type': 'application/json'
-  },
-  data: { name: 'John Doe' },
-  timeout: 5000
-})
+```rust
+let config = CuimpRequestConfig {
+    url: Some("https://api.example.com/users".to_string()),
+    method: Some(Method::POST),
+    headers: Some(headers),
+    data: Some(json!({"name": "John Doe"})),
+    timeout: Some(5000),
+    ..Default::default()
+};
+let response: CuimpResponse<Value> = client.request(config).await?;
 ```
 
-### Core Classes
+### Core Struct
 
 #### `Cuimp`
-The core class for managing curl-impersonate binaries and descriptors.
+The core struct for managing curl-impersonate binaries and descriptors.
 
-```javascript
-import { Cuimp } from 'cuimp'
+```rust
+use cuimp::{Cuimp, CuimpDescriptor, CuimpOptions};
 
-const cuimp = new Cuimp({
-  descriptor: { browser: 'chrome', version: '123' },
-  path: '/custom/path'
-})
+let descriptor = CuimpDescriptor {
+    browser: Some("chrome".to_string()),
+    version: Some("123".to_string()),
+    ..Default::default()
+};
+
+let mut cuimp = Cuimp::new(CuimpOptions {
+    descriptor: Some(descriptor),
+    path: Some("/custom/path".to_string()),
+    ..Default::default()
+})?;
 
 // Verify binary
-const info = await cuimp.verifyBinary()
+let info = cuimp.verify_binary().await?;
 
 // Build command preview
-const command = cuimp.buildCommandPreview('https://example.com', 'GET')
+let command = cuimp.build_command_preview("https://example.com", "GET").await?;
 
 // Download binary without verification
-const binaryInfo = await cuimp.download()
-```
-
-#### `CuimpHttp`
-HTTP client class that wraps the Cuimp core.
-
-```javascript
-import { CuimpHttp, Cuimp } from 'cuimp'
-
-const core = new Cuimp()
-const client = new CuimpHttp(core, {
-  baseURL: 'https://api.example.com',
-  timeout: 10000
-})
+let binary_info = cuimp.download().await?;
 ```
 
 ## Configuration
@@ -253,12 +327,12 @@ const client = new CuimpHttp(core, {
 
 Configure which browser to impersonate:
 
-```typescript
-interface CuimpDescriptor {
-  browser?: 'chrome' | 'firefox' | 'edge' | 'safari'
-  version?: string  // e.g., '123', '124'
-  architecture?: 'x64' | 'arm64'
-  platform?: 'linux' | 'windows' | 'macos'
+```rust
+pub struct CuimpDescriptor {
+    pub browser: Option<String>,      // 'chrome', 'firefox', 'edge', 'safari'
+    pub version: Option<String>,      // e.g., '123', '124'
+    pub architecture: Option<String>, // 'x64', 'arm64'
+    pub platform: Option<String>,     // 'linux', 'windows', 'macos'
 }
 ```
 
@@ -266,17 +340,19 @@ interface CuimpDescriptor {
 
 Request configuration options:
 
-```typescript
-interface CuimpRequestConfig {
-  url: string
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
-  headers?: Record<string, string>
-  data?: any
-  timeout?: number
-  maxRedirects?: number
-  proxy?: string  // HTTP, HTTPS, or SOCKS proxy URL
-  insecureTLS?: boolean  // Skip TLS certificate verification
-  signal?: AbortSignal  // Request cancellation
+```rust
+pub struct CuimpRequestConfig {
+    pub url: Option<String>,
+    pub method: Option<Method>,
+    pub base_url: Option<String>,
+    pub headers: Option<HashMap<String, String>>,
+    pub params: Option<HashMap<String, String>>,
+    pub data: Option<Value>,
+    pub timeout: Option<u64>,
+    pub max_redirects: Option<u32>,
+    pub proxy: Option<String>,
+    pub insecure_tls: Option<bool>,
+    pub extra_curl_args: Option<Vec<String>>,
 }
 ```
 
@@ -284,10 +360,11 @@ interface CuimpRequestConfig {
 
 Core options:
 
-```typescript
-interface CuimpOptions {
-  descriptor?: CuimpDescriptor
-  path?: string  // Custom path to curl-impersonate binary
+```rust
+pub struct CuimpOptions {
+    pub descriptor: Option<CuimpDescriptor>,
+    pub path: Option<String>,
+    pub extra_curl_args: Option<Vec<String>>,
 }
 ```
 
@@ -299,90 +376,26 @@ interface CuimpOptions {
 | Firefox | 133, 135 | Linux, Windows, macOS |
 | Edge    | 99, 101 | Linux, Windows, macOS |
 | Safari  | 153, 155, 170, 172, 180, 184, 260 | macOS, iOS |
-| Tor     | 145 | Linux, Windows, macOS |
 
 ## Response Format
 
 All HTTP methods return a standardized response:
 
-```typescript
-interface CuimpResponse<T = any> {
-  status: number
-  statusText: string
-  headers: Record<string, string>
-  data: T
-  rawBody: Buffer
-  request: {
-    url: string
-    method: string
-    headers: Record<string, string>
-    command: string
-  }
+```rust
+pub struct CuimpResponse<T> {
+    pub status: u16,
+    pub status_text: String,
+    pub headers: HashMap<String, String>,
+    pub data: T,
+    pub raw_body: Vec<u8>,
+    pub request: RequestInfo,
 }
-```
 
-## Examples
-
-### Basic Usage
-
-```javascript
-import { get, post } from 'cuimp'
-
-// GET request
-const users = await get('https://jsonplaceholder.typicode.com/users')
-console.log(users.data)
-
-// POST request
-const newUser = await post('https://jsonplaceholder.typicode.com/users', {
-  name: 'John Doe',
-  email: 'john@example.com'
-})
-```
-
-### Using HTTP Client
-
-```javascript
-import { createCuimpHttp } from 'cuimp'
-
-const client = createCuimpHttp({
-  descriptor: { browser: 'chrome', version: '123' }
-})
-
-// Set default headers
-client.defaults.headers['Authorization'] = 'Bearer your-token'
-
-// Make requests
-const response = await client.get('/api/users')
-```
-
-### Custom Binary Path
-
-```javascript
-import { Cuimp } from 'cuimp'
-
-const cuimp = new Cuimp({
-  path: '/usr/local/bin/curl-impersonate'
-})
-
-const info = await cuimp.verifyBinary()
-```
-
-### Error Handling
-
-```javascript
-import { get } from 'cuimp'
-
-try {
-  const response = await get('https://api.example.com/data')
-  console.log(response.data)
-} catch (error) {
-  if (error.code === 'ENOTFOUND') {
-    console.log('Network error')
-  } else if (error.status) {
-    console.log(`HTTP ${error.status}: ${error.statusText}`)
-  } else {
-    console.log('Unknown error:', error.message)
-  }
+pub struct RequestInfo {
+    pub url: String,
+    pub method: String,
+    pub headers: HashMap<String, String>,
+    pub command: String,
 }
 ```
 
@@ -393,50 +406,39 @@ Cuimp automatically manages curl-impersonate binaries:
 1. **Automatic Download**: Downloads the appropriate binary for your platform on first use
 2. **Force Download**: Always downloads fresh binaries to ensure consistency
 3. **Verification**: Checks binary integrity and permissions
-4. **Clean Storage**: Binaries are stored in `node_modules/cuimp/binaries/` (not in your project root)
+4. **Clean Storage**: Binaries are stored in `~/.cuimp/binaries/` (not in your project directory)
 5. **Cross-Platform**: Automatically detects your platform and architecture
 
 ### Binary Storage Location
 
-- **Development**: `./node_modules/cuimp/binaries/`
-- **Production**: `./node_modules/cuimp/binaries/`
+- **Default**: `~/.cuimp/binaries/`
+- **Fallback**: `./binaries/` (if home directory is not accessible)
 - **No Project Pollution**: Your project directory stays clean
 
 ### Supported Proxy Formats
 
-```javascript
+```rust
 // HTTP proxy
-proxy: 'http://proxy.example.com:8080'
+proxy: Some("http://proxy.example.com:8080".to_string())
 
 // HTTPS proxy
-proxy: 'https://proxy.example.com:8080'
+proxy: Some("https://proxy.example.com:8080".to_string())
 
 // SOCKS4 proxy
-proxy: 'socks4://proxy.example.com:1080'
+proxy: Some("socks4://proxy.example.com:1080".to_string())
 
 // SOCKS5 proxy
-proxy: 'socks5://proxy.example.com:1080'
+proxy: Some("socks5://proxy.example.com:1080".to_string())
 
 // Proxy with authentication
-proxy: 'http://username:password@proxy.example.com:8080'
-proxy: 'socks5://username:password@proxy.example.com:1080'
+proxy: Some("http://username:password@proxy.example.com:8080".to_string())
+proxy: Some("socks5://username:password@proxy.example.com:1080".to_string())
 
 // Automatic from environment variables
 // HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, http_proxy, https_proxy, all_proxy
 ```
 
-## Important Notes
-
-### Force Download Behavior
-
-Cuimp **always downloads fresh binaries** on first use, regardless of what's already installed on your system. This ensures:
-
-- ✅ **Consistency**: All users get the same binary versions
-- ✅ **Reliability**: No dependency on system-installed binaries
-- ✅ **Security**: Fresh downloads with verified checksums
-- ✅ **Simplicity**: No need to manage system dependencies
-
-### Environment Variables
+## Environment Variables
 
 Cuimp automatically detects and uses these proxy environment variables:
 
@@ -454,8 +456,24 @@ export all_proxy=socks5://proxy.example.com:1080
 
 ## Requirements
 
-- Node.js >= 18.17
+- Rust >= 1.70
+- Tokio runtime
 - Internet connection (for binary download)
+
+## Examples
+
+Run the examples:
+
+```bash
+# Simple GET/POST example
+cargo run --example simple
+
+# HTTP client with custom browser
+cargo run --example client
+
+# Proxy usage example
+cargo run --example proxy
+```
 
 ## Troubleshooting
 
@@ -464,47 +482,33 @@ export all_proxy=socks5://proxy.example.com:1080
 **Q: Binary download fails**
 ```bash
 # Check your internet connection and try again
-# The binary will be downloaded to node_modules/cuimp/binaries/
+# The binary will be downloaded to ~/.cuimp/binaries/
 ```
 
 **Q: Proxy not working**
-```javascript
+```rust
 // Make sure your proxy URL is correct
-const response = await request({
-  url: 'https://httpbin.org/ip',
-  proxy: 'http://username:password@proxy.example.com:8080'
-})
+let config = CuimpRequestConfig {
+    url: Some("https://httpbin.org/ip".to_string()),
+    proxy: Some("http://username:password@proxy.example.com:8080".to_string()),
+    ..Default::default()
+};
 
 // Or set environment variables
-process.env.HTTP_PROXY = 'http://proxy.example.com:8080'
+std::env::set_var("HTTP_PROXY", "http://proxy.example.com:8080");
 ```
 
 **Q: Permission denied errors**
 ```bash
 # On Unix systems, make sure the binary has execute permissions
-chmod +x node_modules/cuimp/binaries/curl-impersonate
+chmod +x ~/.cuimp/binaries/curl-impersonate
 ```
 
 **Q: Binary not found**
-```javascript
-// Force re-download by clearing the binaries directory
-rm -rf node_modules/cuimp/binaries/
-// Then run your code again - it will re-download
-```
-
-### Debug Mode
-
-Enable debug logging to see what's happening:
-
-```javascript
-// Set debug environment variable
-process.env.DEBUG = 'cuimp:*'
-
-// Or check the binary path
-import { Cuimp } from 'cuimp'
-const cuimp = new Cuimp()
-const binaryPath = await cuimp.verifyBinary()
-console.log('Binary path:', binaryPath)
+```bash
+# Force re-download by clearing the binaries directory
+rm -rf ~/.cuimp/binaries/
+# Then run your code again - it will re-download
 ```
 
 ## License
@@ -517,13 +521,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Links
 
-- [GitHub Repository](https://github.com/f4ran/cuimp-ts)
+- [GitHub Repository](https://github.com/F4RAN/cuimp-rs)
 - [curl-impersonate](https://github.com/lexiforest/curl-impersonate)
-- [npm Package](https://www.npmjs.com/package/cuimp)
+- [TypeScript Version](https://github.com/F4RAN/cuimp-ts)
 
-# Contributors
+## Contributors
 
-Thanks to these awesome people:
-
-- [@ma-joel](https://github.com/ma-joel) - CI build, non-UTF-8 encoding support, redirect fixes
 - [@F4RAN](https://github.com/F4RAN) - Original author and maintainer
