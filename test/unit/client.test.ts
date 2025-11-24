@@ -398,7 +398,7 @@ describe('CuimpHttp', () => {
       )
     })
 
-    it.skip('should throw error for missing URL', async () => {
+    it('should throw error for missing URL', async () => {
       const config: CuimpRequestConfig = {
         method: 'GET'
       }
