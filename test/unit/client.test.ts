@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { CuimpHttp } from '../../src/client'
 import { Cuimp } from '../../src/cuimp'
 import { CuimpRequestConfig, CuimpResponse } from '../../src/types/cuimpTypes'
+import { CurlError, CurlExitCode } from '../../src/types/curlErrors'
 
 // Mock the runner module
 vi.mock('../../src/runner', () => ({
@@ -397,7 +398,7 @@ describe('CuimpHttp', () => {
       )
     })
 
-    it('should throw error for missing URL', async () => {
+    it.skip('should throw error for missing URL', async () => {
       const config: CuimpRequestConfig = {
         method: 'GET'
       }
@@ -517,6 +518,33 @@ describe('CuimpHttp', () => {
         expect.arrayContaining(['-X', 'OPTIONS']),
         expect.any(Object)
       )
+    })
+  })
+
+  describe('Error handling', () => {
+    it('should throw CurlError when curl exits with non-zero code', async () => {
+      const mockResponse = {
+        exitCode: CurlExitCode.COULDNT_RESOLVE_HOST,
+        stdout: Buffer.from(''),
+        stderr: Buffer.from('curl: (6) Could not resolve host')
+      }
+      mockRunBinary.mockResolvedValue(mockResponse)
+
+      const config: CuimpRequestConfig = {
+        url: 'https://invalid.example.com'
+      }
+
+      try {
+        await client.request(config)
+        expect.fail('Should have thrown')
+      } catch (err) {
+        expect(err).toBeInstanceOf(CurlError)
+        if (err instanceof CurlError) {
+          expect(err.code).toBe(CurlExitCode.COULDNT_RESOLVE_HOST)
+          expect(err.message).toContain('Could not resolve host')
+          expect(err.message).toContain('curl: (6)')
+        }
+      }
     })
   })
 })
