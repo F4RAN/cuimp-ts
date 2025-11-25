@@ -1,17 +1,18 @@
-import { CuimpDescriptor, BinaryInfo, CuimpOptions } from './types/cuimpTypes'
+import { CuimpDescriptor, BinaryInfo, CuimpOptions, Logger } from './types/cuimpTypes'
 import { validateDescriptor } from './validations/descriptorValidation'
 import { parseDescriptor } from './helpers/parser'
 import fs from 'fs'
-
 
 class Cuimp {
   private descriptor: CuimpDescriptor
   private path: string
   private binaryInfo?: BinaryInfo
+  private logger: Logger
   
   constructor(options?: CuimpOptions) {
     this.descriptor = options?.descriptor || {}
     this.path = options?.path || ''
+    this.logger = options?.logger || console
   }
   
   /**
@@ -31,7 +32,7 @@ class Cuimp {
       }
 
       // Parse descriptor to get binary info
-      this.binaryInfo = await parseDescriptor(this.descriptor)
+      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
       
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after parsing descriptor')
@@ -45,9 +46,9 @@ class Cuimp {
       // Update the path
       this.path = this.binaryInfo.binaryPath
 
-      console.log(`Binary verified: ${this.path}`)
+      this.logger.info(`Binary verified: ${this.path}`)
       if (this.binaryInfo.isDownloaded) {
-        console.log(`Binary downloaded successfully (version: ${this.binaryInfo.version})`)
+        this.logger.info(`Binary downloaded successfully (version: ${this.binaryInfo.version})`)
       }
 
       return this.path
@@ -115,7 +116,7 @@ class Cuimp {
       // Build the command preview
       const command = `${binaryPath} -X ${upperMethod} "${url}"`
       
-      console.log(`Command preview: ${command}`)
+      this.logger.info(`Command preview: ${command}`)
       return command
 
     } catch (error) {
@@ -177,17 +178,17 @@ class Cuimp {
       }
 
       // Parse descriptor to get binary info and download
-      this.binaryInfo = await parseDescriptor(this.descriptor)
+      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
       
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after processing')
       }
 
-      console.log(`Binary ready: ${this.binaryInfo.binaryPath}`)
+      this.logger.info(`Binary ready: ${this.binaryInfo.binaryPath}`)
       if (this.binaryInfo.isDownloaded) {
-        console.log(`Download completed (version: ${this.binaryInfo.version})`)
+        this.logger.info(`Download completed (version: ${this.binaryInfo.version})`)
       } else {
-        console.log(`Using existing binary (version: ${this.binaryInfo.version})`)
+        this.logger.info(`Using existing binary (version: ${this.binaryInfo.version})`)
       }
 
       return this.binaryInfo

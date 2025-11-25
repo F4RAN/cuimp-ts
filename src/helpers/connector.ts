@@ -1,4 +1,5 @@
 import { LIB_URL } from "../constants/cuimpConstants"
+import { Logger } from '../types/cuimpTypes'
 
 export const getLatestRelease = async () => {
     const response = await fetch(`https://api.github.com/repos/lexiforest/curl-impersonate/releases/latest`)
@@ -9,8 +10,8 @@ export const getLatestRelease = async () => {
     return data.tag_name // e.g. "v1.2.2"
 }
 
-export const getVersion = async (browser: string, architecture: string, platform: string) => {
+export const getVersion = async (browser: string, architecture: string, platform: string, logger: Logger = console) => {
     const latestRelease = await getLatestRelease()
-    console.log(latestRelease)
+    logger.info(latestRelease)
     return latestRelease.replace(/^v/, "") // strip leading "v"
 }

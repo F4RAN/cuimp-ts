@@ -1,3 +1,5 @@
+import { info } from 'console'
+
 export interface CuimpDescriptor {
   browser?: string
   version?: string
@@ -43,11 +45,19 @@ export interface CuimpResponse<T = any> {
   };
 }
 
+export interface Logger {
+  info(...args: any[]) :void;
+  warn(...args: any[]) :void;
+  error(...args: any[]) :void;
+  debug(...args: any[]) :void;
+}
+
 
 export interface CuimpOptions {
   descriptor?: CuimpDescriptor
   path?: string
   extraCurlArgs?: string[] // Global curl arguments applied to all requests
+  logger?: Logger;
 }
 
 

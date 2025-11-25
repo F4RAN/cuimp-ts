@@ -1,5 +1,5 @@
 import { LIB_URL, BROWSER_LIST, ARCHITECTURE_LIST, PLATFORM_LIST } from "../constants/cuimpConstants"
-import { CuimpDescriptor, BinaryInfo } from "../types/cuimpTypes"
+import { CuimpDescriptor, BinaryInfo, Logger } from "../types/cuimpTypes"
 import { getLatestRelease } from "./connector"
 import fs from 'fs'
 import path from 'path'
@@ -193,7 +193,8 @@ const downloadAndExtractBinary = async (
     browser: string, 
     architecture: string, 
     platform: string, 
-    version: string
+    version: string,
+    logger: Logger,
 ): Promise<DownloadResult> => {
     try {
         // Get latest release info
@@ -213,7 +214,7 @@ const downloadAndExtractBinary = async (
         const downloadUrl = `https://github.com/lexiforest/curl-impersonate/releases/download/${latestVersion}/${assetName}`
         
         // Download the binary
-        console.log(`Downloading ${downloadUrl}...`)
+        logger.info(`Downloading ${downloadUrl}...`)
         const response = await fetch(downloadUrl)
         
         if (!response.ok) {
@@ -237,7 +238,7 @@ const downloadAndExtractBinary = async (
         fs.writeFileSync(tempFileName, buffer)
         
         // Extract the binary to the binaries directory
-        console.log(`Extracting ${tempFileName} to ${binariesDir}...`)
+        logger.info(`Extracting ${tempFileName} to ${binariesDir}...`)
         await extract({
             file: tempFileName,
             cwd: binariesDir
@@ -337,7 +338,7 @@ const getSystemInfo = (): { architecture: string; platform: string } => {
 /**
  * Main function to parse descriptor and get binary information
  */
-export const parseDescriptor = async (descriptor: CuimpDescriptor): Promise<BinaryInfo> => {
+export const parseDescriptor = async (descriptor: CuimpDescriptor, logger: Logger = console): Promise<BinaryInfo> => {
     try {
         const { architecture, platform } = getSystemInfo()
         const browser = descriptor.browser || 'chrome'
@@ -349,7 +350,7 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor): Promise<Bina
         // First, check if a suitable binary already exists
         const existingBinary = findExistingBinary(browser)
         if (existingBinary) {
-            console.log(`Found existing binary: ${existingBinary}`)
+            logger.info(`Found existing binary: ${existingBinary}`)
             return {
                 binaryPath: existingBinary,
                 isDownloaded: false,
@@ -358,9 +359,9 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor): Promise<Bina
         }
         
         // If no existing binary found, download it
-        console.log(`No existing binary found. Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
+        logger.info(`No existing binary found. Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
         
-        const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version)
+        const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version, logger)
         
         return {
             binaryPath: downloadResult.binaryPath,
@@ -380,11 +381,12 @@ export const getLink = async (
     browser: string, 
     version: string, 
     architecture: string, 
-    platform: string
+    platform: string,
+    logger: Logger = console,
 ): Promise<string> => {
     try {
         validateParameters(browser, architecture, platform)
-        const result = await downloadAndExtractBinary(browser, architecture, platform, version)
+        const result = await downloadAndExtractBinary(browser, architecture, platform, version, logger)
         return result.binaryPath
     } catch (error) {
         throw new Error(`Failed to get link: ${error instanceof Error ? error.message : String(error)}`)
