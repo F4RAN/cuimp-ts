@@ -49,6 +49,7 @@ export interface CuimpOptions {
   descriptor?: CuimpDescriptor
   path?: string
   extraCurlArgs?: string[] // Global curl arguments applied to all requests
+  logger?: Pick<Console, 'log' | 'warn' | 'error'>
 }
 
 
