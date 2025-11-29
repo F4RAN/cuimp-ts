@@ -43,7 +43,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: cuimp-ts-v${{ github.ref_name }}.tar.gz
+          files: cuimp-ts-${{ github.ref_name }}.tar.gz
           generate_release_notes: true
           body: |
             ## Installation Methods

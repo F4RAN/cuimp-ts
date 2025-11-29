@@ -359,24 +359,24 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor, logger: Logge
                 const versionMatches = version === 'latest' || existingVersion === version
 
                 if (versionMatches) {
-                    console.log(`Found existing binary: ${existingBinary}`)
+                    logger.info(`Found existing binary: ${existingBinary}`)
                     return {
                         binaryPath: existingBinary,
                         isDownloaded: false,
                         version: existingVersion || 'unknown'
                     }
                 } else {
-                    console.log(`Found binary version ${existingVersion}, but version ${version} was requested. Re-downloading...`)
+                    logger.warn(`Found binary version ${existingVersion}, but version ${version} was requested. Re-downloading...`)
                 }
             }
         } else {
-            console.log('forceDownload enabled, skipping cache...')
+            logger.info('forceDownload enabled, skipping cache...')
         }
 
         // Download binary if not found, version mismatch, or forceDownload enabled
-        console.log(`Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
+        logger.info(`Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
 
-        const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version)
+        const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version, logger)
 
         return {
             binaryPath: downloadResult.binaryPath,
