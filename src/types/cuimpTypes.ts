@@ -3,6 +3,7 @@ export interface CuimpDescriptor {
   version?: string
   architecture?: string
   platform?: string
+  forceDownload?: boolean  // Force re-download even if binary exists
 }
 
 export interface BinaryInfo {
