@@ -1,6 +1,6 @@
 # Cuimp
 
-A Node.js wrapper for [curl-impersonate](https://github.com/lwthiker/curl-impersonate) that allows you to make HTTP requests that mimic real browser behavior, bypassing many anti-bot protections.
+A Node.js wrapper for [curl-impersonate](https://github.com/lexiforest/curl-impersonate) that allows you to make HTTP requests that mimic real browser behavior, bypassing many anti-bot protections.
 
 ## Features
 
