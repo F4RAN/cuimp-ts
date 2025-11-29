@@ -8,10 +8,12 @@ class Cuimp {
   private descriptor: CuimpDescriptor
   private path: string
   private binaryInfo?: BinaryInfo
+  private logger: Pick<Console, 'log' | 'warn' | 'error'>
   
   constructor(options?: CuimpOptions) {
     this.descriptor = options?.descriptor || {}
     this.path = options?.path || ''
+    this.logger = options?.logger ?? console
   }
   
   /**
@@ -45,9 +47,9 @@ class Cuimp {
       // Update the path
       this.path = this.binaryInfo.binaryPath
 
-      console.log(`Binary verified: ${this.path}`)
+      this.logger.log(`Binary verified: ${this.path}`)
       if (this.binaryInfo.isDownloaded) {
-        console.log(`Binary downloaded successfully (version: ${this.binaryInfo.version})`)
+        this.logger.log(`Binary downloaded successfully (version: ${this.binaryInfo.version})`)
       }
 
       return this.path
@@ -87,7 +89,7 @@ class Cuimp {
       return true
 
     } catch (error) {
-      console.warn(`Error checking binary executable status: ${error}`)
+      this.logger.warn(`Error checking binary executable status: ${error}`)
       return false
     }
   }
@@ -115,7 +117,7 @@ class Cuimp {
       // Build the command preview
       const command = `${binaryPath} -X ${upperMethod} "${url}"`
       
-      console.log(`Command preview: ${command}`)
+      this.logger.log(`Command preview: ${command}`)
       return command
 
     } catch (error) {
@@ -183,11 +185,11 @@ class Cuimp {
         throw new Error('Binary path not found after processing')
       }
 
-      console.log(`Binary ready: ${this.binaryInfo.binaryPath}`)
+      this.logger.log(`Binary ready: ${this.binaryInfo.binaryPath}`)
       if (this.binaryInfo.isDownloaded) {
-        console.log(`Download completed (version: ${this.binaryInfo.version})`)
+        this.logger.log(`Download completed (version: ${this.binaryInfo.version})`)
       } else {
-        console.log(`Using existing binary (version: ${this.binaryInfo.version})`)
+        this.logger.log(`Using existing binary (version: ${this.binaryInfo.version})`)
       }
 
       return this.binaryInfo
