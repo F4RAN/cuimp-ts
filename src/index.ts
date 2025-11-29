@@ -16,6 +16,9 @@ export type {
 
 export type { RunResult } from './types/runTypes'
 
+// Error exports
+export { CurlError, CurlExitCode } from './types/curlErrors'
+
 // Utility exports
 export { runBinary } from './runner'
 

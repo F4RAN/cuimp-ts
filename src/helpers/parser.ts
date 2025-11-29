@@ -343,32 +343,47 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor, logger: Logge
         const { architecture, platform } = getSystemInfo()
         const browser = descriptor.browser || 'chrome'
         const version = descriptor.version || 'latest'
-        
+        const forceDownload = descriptor.forceDownload || false
+
         // Validate parameters
         validateParameters(browser, architecture, platform)
-        
-        // First, check if a suitable binary already exists
-        const existingBinary = findExistingBinary(browser)
-        if (existingBinary) {
-            logger.info(`Found existing binary: ${existingBinary}`)
-            return {
-                binaryPath: existingBinary,
-                isDownloaded: false,
-                version: extractVersionNumber(path.basename(existingBinary)).toString() || 'unknown'
+
+        // Check for existing binary unless forceDownload is enabled
+        if (!forceDownload) {
+            const existingBinary = findExistingBinary(browser)
+            if (existingBinary) {
+                const existingVersion = extractVersionNumber(path.basename(existingBinary)).toString()
+
+                // For 'latest', accept any existing binary
+                // For specific version, check if it matches
+                const versionMatches = version === 'latest' || existingVersion === version
+
+                if (versionMatches) {
+                    console.log(`Found existing binary: ${existingBinary}`)
+                    return {
+                        binaryPath: existingBinary,
+                        isDownloaded: false,
+                        version: existingVersion || 'unknown'
+                    }
+                } else {
+                    console.log(`Found binary version ${existingVersion}, but version ${version} was requested. Re-downloading...`)
+                }
             }
+        } else {
+            console.log('forceDownload enabled, skipping cache...')
         }
-        
-        // If no existing binary found, download it
-        logger.info(`No existing binary found. Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
-        
-        const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version, logger)
-        
+
+        // Download binary if not found, version mismatch, or forceDownload enabled
+        console.log(`Downloading curl-impersonate for ${browser} on ${platform}-${architecture}...`)
+
+        const downloadResult = await downloadAndExtractBinary(browser, architecture, platform, version)
+
         return {
             binaryPath: downloadResult.binaryPath,
             isDownloaded: true,
             version: downloadResult.version
         }
-        
+
     } catch (error) {
         throw new Error(`Failed to parse descriptor: ${error instanceof Error ? error.message : String(error)}`)
     }

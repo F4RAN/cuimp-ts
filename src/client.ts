@@ -1,6 +1,7 @@
 import { Cuimp } from './cuimp';
 import { runBinary } from './runner';
 import type { CuimpInstance, CuimpRequestConfig, CuimpResponse, Method } from './types/cuimpTypes';
+import { CurlError, CurlExitCode } from './types/curlErrors';
 
 function joinURL(base?: string, path?: string): string | undefined {
   if (!path) return base;
@@ -174,6 +175,12 @@ export class CuimpHttp implements CuimpInstance {
 
     // Execute
     const result = await runBinary(bin, args, { timeout: config.timeout ?? this.defaults.timeout, signal: config.signal });
+
+    // Check exit code
+    if (result.exitCode !== null && result.exitCode !== CurlExitCode.OK) {
+      const stderr = result.stderr.toString('utf8');
+      throw new CurlError(result.exitCode as CurlExitCode, stderr);
+    }
 
     // curl outputs with -i flag:
     // [HTTP/1.1 200 OK\r\nHeaders...\r\n\r\n]...body...

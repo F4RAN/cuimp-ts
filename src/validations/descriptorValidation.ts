@@ -19,7 +19,10 @@ export const validateDescriptor = (descriptor: CuimpDescriptor) => {
     }
     
     // Only validate version if provided
-    if (descriptor.version && descriptor.version.length !== 3) {
-        throw new Error('Version must be in the format of XYZ')
+    if (descriptor.version) {
+        // Accept 'latest' as a special value
+        if (descriptor.version !== 'latest' && descriptor.version.length !== 3) {
+            throw new Error('Version must be in the format of XYZ or "latest"')
+        }
     }
 }

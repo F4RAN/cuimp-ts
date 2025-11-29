@@ -256,9 +256,10 @@ Configure which browser to impersonate:
 ```typescript
 interface CuimpDescriptor {
   browser?: 'chrome' | 'firefox' | 'edge' | 'safari'
-  version?: string  // e.g., '123', '124'
+  version?: string  // e.g., '123', '124', or 'latest' (default)
   architecture?: 'x64' | 'arm64'
   platform?: 'linux' | 'windows' | 'macos'
+  forceDownload?: boolean  // Force re-download even if binary exists
 }
 ```
 
@@ -391,15 +392,23 @@ try {
 Cuimp automatically manages curl-impersonate binaries:
 
 1. **Automatic Download**: Downloads the appropriate binary for your platform on first use
-2. **Force Download**: Always downloads fresh binaries to ensure consistency
-3. **Verification**: Checks binary integrity and permissions
-4. **Clean Storage**: Binaries are stored in `node_modules/cuimp/binaries/` (not in your project root)
-5. **Cross-Platform**: Automatically detects your platform and architecture
+2. **Version Matching**: Reuses cached binaries only if they match the requested version
+3. **Force Download**: Use `forceDownload: true` to bypass cache and always download fresh binaries
+4. **Verification**: Checks binary integrity and permissions
+5. **Clean Storage**: Binaries are stored in `~/.cuimp/binaries/` (user home directory)
+6. **Cross-Platform**: Automatically detects your platform and architecture
+
+### Version Behavior
+
+- **Specific version** (e.g., `'133'`): Uses cached binary if version matches, otherwise downloads
+- **'latest'** (default): Uses any cached binary, or downloads if none exists
+- **forceDownload**: Always downloads, ignoring cache (useful for always getting the actual latest version)
 
 ### Binary Storage Location
 
-- **Development**: `./node_modules/cuimp/binaries/`
-- **Production**: `./node_modules/cuimp/binaries/`
+- **Download location**: `~/.cuimp/binaries/` (user home directory)
+- **Search locations**: Also checks `node_modules/cuimp/binaries/` and system paths as fallback
+- **Shared across projects**: Downloaded binaries are reused between projects
 - **No Project Pollution**: Your project directory stays clean
 
 ### Supported Proxy Formats
