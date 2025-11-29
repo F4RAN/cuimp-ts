@@ -534,6 +534,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 Thanks to these awesome people:
 
-- [@ma-joel](https://github.com/ma-joel) - CI build, non-UTF-8 encoding support, redirect fixes
+
 - [@F4RAN](https://github.com/F4RAN) - Original author and maintainer
+- [@ma-joel](https://github.com/ma-joel) - CI build, non-UTF-8 encoding support, redirect fixes
 - [@parigi-n](https://github.com/parigi-n) - Additional bug fixes and improvements
+- [@nvitaterna](https://github.com/nvitaterna) - Additional bug fixes and improvements
