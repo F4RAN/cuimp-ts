@@ -44,6 +44,13 @@ export interface CuimpResponse<T = any> {
   };
 }
 
+export interface Logger {
+  info(...args: any[]) :void;
+  warn(...args: any[]) :void;
+  error(...args: any[]) :void;
+  debug(...args: any[]) :void;
+}
+
 
 export interface CuimpOptions {
   descriptor?: CuimpDescriptor

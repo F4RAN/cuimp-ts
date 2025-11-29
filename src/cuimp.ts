@@ -1,8 +1,7 @@
-import { CuimpDescriptor, BinaryInfo, CuimpOptions } from './types/cuimpTypes'
+import { CuimpDescriptor, BinaryInfo, CuimpOptions, Logger } from './types/cuimpTypes'
 import { validateDescriptor } from './validations/descriptorValidation'
 import { parseDescriptor } from './helpers/parser'
 import fs from 'fs'
-
 
 class Cuimp {
   private descriptor: CuimpDescriptor
@@ -33,7 +32,7 @@ class Cuimp {
       }
 
       // Parse descriptor to get binary info
-      this.binaryInfo = await parseDescriptor(this.descriptor)
+      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
       
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after parsing descriptor')
@@ -179,7 +178,7 @@ class Cuimp {
       }
 
       // Parse descriptor to get binary info and download
-      this.binaryInfo = await parseDescriptor(this.descriptor)
+      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
       
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after processing')
