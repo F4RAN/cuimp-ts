@@ -1,5 +1,3 @@
-import { info } from 'console'
-
 export interface CuimpDescriptor {
   browser?: string
   version?: string
