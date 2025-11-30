@@ -92,6 +92,13 @@ Demonstrates advanced configuration options like timeouts, redirects, and reques
 node examples/09-advanced-config.js
 ```
 
+### 10-custom-logger.js
+Shows how to use custom loggers to control logging behavior, suppress logs, or route them to external systems.
+
+```bash
+node examples/10-custom-logger.js
+```
+
 ## Running All Examples
 
 You can run all examples in sequence:

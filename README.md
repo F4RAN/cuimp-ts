@@ -131,6 +131,28 @@ for (const browser of browsers) {
 }
 ```
 
+### Custom Logging
+
+```javascript
+import { createCuimpHttp } from 'cuimp'
+
+// Suppress all logs
+const silentLogger = {
+  info: () => {}, warn: () => {}, error: () => {}, debug: () => {}
+}
+
+const client = createCuimpHttp({
+  descriptor: { browser: 'chrome' },
+  logger: silentLogger
+})
+
+// Or use a structured logger (Winston, Pino, etc.)
+const client = createCuimpHttp({
+  descriptor: { browser: 'chrome' },
+  logger: myStructuredLogger
+})
+```
+
 ## API Reference
 
 ### Convenience Functions
@@ -289,8 +311,46 @@ Core options:
 interface CuimpOptions {
   descriptor?: CuimpDescriptor
   path?: string  // Custom path to curl-impersonate binary
+  extraCurlArgs?: string[]  // Global curl arguments applied to all requests
+  logger?: Logger  // Custom logger for binary download/verification messages
 }
 ```
+
+### Custom Logging
+
+You can provide a custom logger to control how cuimp logs binary download and verification messages:
+
+```typescript
+interface Logger {
+  info(...args: any[]): void
+  warn(...args: any[]): void
+  error(...args: any[]): void
+  debug(...args: any[]): void
+}
+```
+
+```javascript
+// Suppress all logs
+const silentLogger = {
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  debug: () => {}
+}
+
+const client = createCuimpHttp({
+  descriptor: { browser: 'chrome' },
+  logger: silentLogger
+})
+
+// Or use a custom logger (e.g., Winston, Pino)
+const client = createCuimpHttp({
+  descriptor: { browser: 'chrome' },
+  logger: myCustomLogger
+})
+```
+
+By default, cuimp uses `console` for logging.
 
 ## Supported Browsers
 
