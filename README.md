@@ -324,6 +324,8 @@ interface CuimpResponse<T = any> {
 
 ## Examples
 
+> **📁 Runnable Examples**: Check out the [`examples/`](./examples/) folder for complete, runnable examples demonstrating all features of cuimp.
+
 ### Basic Usage
 
 ```javascript
