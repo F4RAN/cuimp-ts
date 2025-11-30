@@ -1,7 +1,27 @@
 {
   "name": "cuimp",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Node wrapper for curl-impersonate (lexiforest) via CLI - Enhanced with raw buffer support and extra curl args",
+  "keywords": [
+    "curl-impersonate",
+    "http-client",
+    "browser-impersonation",
+    "web-scraping",
+    "anti-bot",
+    "curl",
+    "http-request",
+    "typescript",
+    "proxy",
+    "fetch-alternative",
+    "axios-alternative",
+    "bot-detection",
+    "fingerprinting",
+    "http",
+    "https",
+    "request",
+    "scraping",
+    "automation"
+  ],
   "license": "MIT",
   "author": "F4RAN <f4ran@vitalize.dev>",
   "repository": {
