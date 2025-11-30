@@ -36,52 +36,83 @@ jobs:
           cp package.json release/
           cp package-lock.json release/
           cp README.md release/
+          cp tsconfig.json release/
           cp LICENSE release/ 2>/dev/null || true
           cd release
           tar -czf ../cuimp-ts-${{ github.ref_name }}.tar.gz .
+          
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION_NUM="${VERSION#v}"  # Remove 'v' prefix
+          
+          # Get previous tag for commit range
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          # Generate release notes from git commits since last tag
+          echo "## What's Changed" > /tmp/release_notes.txt
+          echo "" >> /tmp/release_notes.txt
+          
+          if [ -z "$PREV_TAG" ]; then
+            # No previous tag, show last 20 commits
+            git log --pretty=format:"- %s (%h)" --no-merges -20 >> /tmp/release_notes.txt || echo "- Initial release" >> /tmp/release_notes.txt
+          else
+            # Show commits since previous tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREV_TAG}..HEAD)
+            if [ -z "$COMMITS" ]; then
+              echo "- No changes detected" >> /tmp/release_notes.txt
+            else
+              echo "$COMMITS" >> /tmp/release_notes.txt
+            fi
+          fi
+          
+          echo "" >> /tmp/release_notes.txt
+          
+          # Add installation instructions
+          cat >> /tmp/release_notes.txt << EOF
+          
+          ## Installation Methods
+          
+          ### Recommended: Install directly from GitHub
+          
+          npm will automatically build from source (via prepare script):
+          
+          \`\`\`bash
+          npm install github:F4RAN/cuimp-ts#${VERSION}
+          \`\`\`
+          
+          Or in \`package.json\`:
+          
+          \`\`\`json
+          {
+            "dependencies": {
+              "cuimp": "github:F4RAN/cuimp-ts#${VERSION}"
+            }
+          }
+          \`\`\`
+          
+          ### Alternative: Manual installation (pre-built)
+          
+          If you don't want automatic building, download \`cuimp-ts-${VERSION}.tar.gz\` (includes dist):
+          
+          \`\`\`bash
+          wget https://github.com/F4RAN/cuimp-ts/releases/download/${VERSION}/cuimp-ts-${VERSION}.tar.gz
+          tar -xzf cuimp-ts-${VERSION}.tar.gz -C ./cuimp
+          npm install ./cuimp
+          \`\`\`
+          EOF
+          
+          # Output for use in next step
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/release_notes.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: cuimp-ts-${{ github.ref_name }}.tar.gz
-          generate_release_notes: true
-          body: |
-            ## Installation Methods
-            
-            ### Recommended: Install directly from GitHub
-            
-            npm will automatically build from source (via prepare script):
-            
-            ```bash
-            npm install github:F4RAN/cuimp-ts#${{ github.ref_name }}
-            ```
-            
-            Or in `package.json`:
-            
-            ```json
-            {
-              "dependencies": {
-                "cuimp": "github:F4RAN/cuimp-ts#${{ github.ref_name }}"
-              }
-            }
-            ```
-            
-            ### Alternative: Manual installation (pre-built)
-            
-            If you don't want automatic building, download `cuimp-ts-${{ github.ref_name }}.tar.gz` (includes dist):
-            
-            ```bash
-            wget https://github.com/F4RAN/cuimp-ts/releases/download/${{ github.ref_name }}/cuimp-ts-${{ github.ref_name }}.tar.gz
-            tar -xzf cuimp-ts-${{ github.ref_name }}.tar.gz -C ./cuimp
-            npm install ./cuimp
-            ```
-            
-            ## New Features
-            
-            - ✨ Raw buffer support (GBK and other non-UTF-8 encodings)
-            - 🔧 Improved response parsing (handles delimiters in body)
-            - 🍪 extraCurlArgs support (cookie jar and other custom parameters)
-            - 🔀 Fixed multiple redirect handling
-            - 📦 Automatic build (on npm install)
+          generate_release_notes: false
+          body: ${{ steps.release_notes.outputs.notes }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
