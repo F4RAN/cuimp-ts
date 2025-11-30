@@ -3,6 +3,7 @@
   "version": "1.3.4",
   "description": "Node wrapper for curl-impersonate (lexiforest) via CLI - Enhanced with raw buffer support and extra curl args",
   "keywords": [
+    "cuimp",
     "curl-impersonate",
     "http-client",
     "browser-impersonation",
