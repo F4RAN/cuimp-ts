@@ -47,8 +47,10 @@ jobs:
           VERSION="${{ github.ref_name }}"
           VERSION_NUM="${VERSION#v}"  # Remove 'v' prefix
           
-          # Get previous tag for commit range
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          # Get all tags and find the previous one
+          git fetch --tags 2>/dev/null || true
+          ALL_TAGS=$(git tag -l --sort=-version:refname | grep -E '^v[0-9]')
+          PREV_TAG=$(echo "$ALL_TAGS" | grep -A1 "^${VERSION}$" | tail -1 || echo "")
           
           # Generate release notes from git commits since last tag
           echo "## What's Changed" > /tmp/release_notes.txt
@@ -59,7 +61,7 @@ jobs:
             git log --pretty=format:"- %s (%h)" --no-merges -20 >> /tmp/release_notes.txt || echo "- Initial release" >> /tmp/release_notes.txt
           else
             # Show commits since previous tag
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREV_TAG}..HEAD)
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREV_TAG}..${VERSION})
             if [ -z "$COMMITS" ]; then
               echo "- No changes detected" >> /tmp/release_notes.txt
             else
