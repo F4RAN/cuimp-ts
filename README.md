@@ -601,3 +601,4 @@ Thanks to these awesome people:
 - [@ma-joel](https://github.com/ma-joel) - CI build, non-UTF-8 encoding support, redirect fixes
 - [@parigi-n](https://github.com/parigi-n) - Additional bug fixes and improvements
 - [@nvitaterna](https://github.com/nvitaterna) - Additional bug fixes and improvements
+- [@tony13tv](https://github.com/tony13tv) - macOS support
