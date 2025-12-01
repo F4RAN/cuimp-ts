@@ -207,6 +207,10 @@ const downloadAndExtractBinary = async (
             // Linux uses specific naming: x86_64-linux-gnu, aarch64-linux-gnu, etc.
             const linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
             assetName = `curl-impersonate-${latestVersion}.${linuxArch}-linux-gnu.tar.gz`
+        } else if (platform === 'macos') {
+            // macos uses specific naming: x86_64-macos, arm64-macos, etc.
+            const macosArch = architecture === 'x64' ? 'x86_64' : 'arm64'
+            assetName = `curl-impersonate-${latestVersion}.${macosArch}-macos.tar.gz`
         } else {
             // Other platforms use the original naming
             assetName = `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
