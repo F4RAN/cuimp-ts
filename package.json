@@ -1,6 +1,6 @@
 {
   "name": "cuimp",
-  "version": "1.3.4",
+  "version": "1.4.0",
   "description": "Node wrapper for curl-impersonate (lexiforest) via CLI - Enhanced with raw buffer support and extra curl args",
   "keywords": [
     "cuimp",
