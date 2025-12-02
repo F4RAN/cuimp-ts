@@ -6,6 +6,14 @@ export interface CuimpDescriptor {
   forceDownload?: boolean  // Force re-download even if binary exists
 }
 
+/**
+ * Cookie jar configuration options
+ * - true: Use automatic in-memory cookie management with temp file
+ * - string: Path to a custom cookie file (Netscape format)
+ * - false/undefined: No automatic cookie management (default)
+ */
+export type CookieJarOption = boolean | string;
+
 export interface BinaryInfo {
     binaryPath: string
     isDownloaded: boolean
@@ -57,6 +65,7 @@ export interface CuimpOptions {
   path?: string
   extraCurlArgs?: string[] // Global curl arguments applied to all requests
   logger?: Logger
+  cookieJar?: CookieJarOption // Enable automatic cookie management
 }
 
 

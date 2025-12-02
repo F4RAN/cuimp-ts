@@ -12,6 +12,7 @@ A Node.js wrapper for [curl-impersonate](https://github.com/lexiforest/curl-impe
 - 🌐 **Cross-Platform**: Works on Linux, macOS, and Windows
 - 🔒 **Proxy Support**: Built-in support for HTTP, HTTPS, and SOCKS proxies with authentication
 - 📁 **Clean Installation**: Binaries stored in package directory, not your project root
+- 🍪 **Cookie Management**: Automatic cookie storage and sending across requests
 
 ## Installation
 
@@ -81,6 +82,35 @@ for (const browser of browsers) {
   const response = await client.get('https://your-api.com/test')
   console.log(`${browser}: ${response.status}`)
 }
+```
+
+### Automatic Cookie Management
+
+```javascript
+import { createCuimpHttp } from 'cuimp'
+
+// Enable automatic cookie management
+const client = createCuimpHttp({
+  descriptor: { browser: 'chrome', version: '123' },
+  cookieJar: true  // Cookies are automatically stored and sent
+})
+
+// First request - server sets cookies
+await client.get('https://httpbin.org/cookies/set/session_id/abc123')
+
+// Second request - cookies are automatically included
+const response = await client.get('https://httpbin.org/cookies')
+console.log(response.data.cookies) // { session_id: 'abc123' }
+
+// Access cookies programmatically
+const cookieJar = client.getCookieJar()
+const cookies = cookieJar.getCookies()
+
+// Clear cookies
+client.clearCookies()
+
+// Clean up when done (removes temp cookie file)
+client.destroy()
 ```
 
 ### Using with Proxies
@@ -313,7 +343,71 @@ interface CuimpOptions {
   path?: string  // Custom path to curl-impersonate binary
   extraCurlArgs?: string[]  // Global curl arguments applied to all requests
   logger?: Logger  // Custom logger for binary download/verification messages
+  cookieJar?: boolean | string  // Enable automatic cookie management
 }
+```
+
+### Cookie Jar Configuration
+
+The `cookieJar` option enables automatic cookie management:
+
+```typescript
+// Option 1: Automatic temp file (cleaned up on destroy)
+const client = createCuimpHttp({
+  cookieJar: true
+})
+
+// Option 2: Custom file path (persists between runs)
+// Recommended: Use user home directory for security
+import os from 'os'
+import path from 'path'
+
+const cookiePath = path.join(os.homedir(), '.cuimp', 'cookies', 'my-cookies.txt')
+const client = createCuimpHttp({
+  cookieJar: cookiePath  // User-specific, secure location
+})
+
+// Option 3: Disabled (default)
+const client = createCuimpHttp({
+  cookieJar: false  // or omit entirely
+})
+```
+
+**Best Practices for Cookie File Paths:**
+- ✅ Use `~/.cuimp/cookies/` (user home directory) - secure, user-specific, consistent with binary storage
+- ✅ Use temp directory for temporary cookies - auto-cleaned
+- ❌ Avoid project root (`./cookies.txt`) - risk of committing sensitive data to git
+
+**Cookie Jar Methods:**
+
+```typescript
+// Get the cookie jar instance
+const jar = client.getCookieJar()
+
+// Get all cookies
+const cookies = jar.getCookies()
+
+// Get cookies for a specific domain
+const domainCookies = jar.getCookiesForDomain('example.com')
+
+// Manually set a cookie
+jar.setCookie({
+  domain: 'example.com',
+  name: 'my_cookie',
+  value: 'my_value',
+  path: '/',
+  secure: true,
+  expires: new Date('2025-12-31')
+})
+
+// Delete a cookie
+jar.deleteCookie('my_cookie', 'example.com')
+
+// Clear all cookies
+client.clearCookies()
+
+// Clean up (removes temp file if using cookieJar: true)
+client.destroy()
 ```
 
 ### Custom Logging
@@ -329,25 +423,52 @@ interface Logger {
 }
 ```
 
+**Example: Using a custom formatted logger**
+
 ```javascript
-// Suppress all logs
-const silentLogger = {
-  info: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {}
+import { createCuimpHttp } from 'cuimp'
+
+// Custom logger with formatted output
+const customLogger = {
+  info: (...args) => console.log('[INFO]', new Date().toISOString(), ...args),
+  warn: (...args) => console.warn('[WARN]', new Date().toISOString(), ...args),
+  error: (...args) => console.error('[ERROR]', new Date().toISOString(), ...args),
+  debug: (...args) => console.debug('[DEBUG]', new Date().toISOString(), ...args)
 }
 
 const client = createCuimpHttp({
-  descriptor: { browser: 'chrome' },
-  logger: silentLogger
+  descriptor: { browser: 'chrome', version: '123' },
+  logger: customLogger
 })
 
-// Or use a custom logger (e.g., Winston, Pino)
+// Now all binary download/verification messages will use your custom format
+await client.get('https://api.example.com/data')
+// Output: [INFO] 2024-01-15T10:30:00.000Z Verifying binary...
+// Output: [INFO] 2024-01-15T10:30:01.000Z Binary verified successfully
+```
+
+**Example: Collecting logs for analysis**
+
+```javascript
+const logEntries = []
+
+const collectingLogger = {
+  info: (...args) => logEntries.push({ level: 'info', timestamp: Date.now(), message: args.join(' ') }),
+  warn: (...args) => logEntries.push({ level: 'warn', timestamp: Date.now(), message: args.join(' ') }),
+  error: (...args) => logEntries.push({ level: 'error', timestamp: Date.now(), message: args.join(' ') }),
+  debug: (...args) => logEntries.push({ level: 'debug', timestamp: Date.now(), message: args.join(' ') })
+}
+
 const client = createCuimpHttp({
-  descriptor: { browser: 'chrome' },
-  logger: myCustomLogger
+  descriptor: { browser: 'firefox' },
+  logger: collectingLogger
 })
+
+await client.get('https://api.example.com/data')
+
+// Analyze collected logs
+console.log('Collected logs:', logEntries)
+// Can send to external logging service, save to file, etc.
 ```
 
 By default, cuimp uses `console` for logging.
@@ -356,10 +477,10 @@ By default, cuimp uses `console` for logging.
 
 | Browser | Versions | Platforms |
 |---------|----------|-----------|
-| Chrome  | 99, 100, 101, 104, 107, 110, 116, 119, 120, 123, 124, 131, 133a, 136 | Linux, Windows, macOS, Android |
-| Firefox | 133, 135 | Linux, Windows, macOS |
+| Chrome  | 99, 100, 101, 104, 107, 110, 116, 119, 120, 123, 124, 131, 133a, 136, 142 | Linux, Windows, macOS, Android |
+| Firefox | 133, 135, 145 | Linux, Windows, macOS |
 | Edge    | 99, 101 | Linux, Windows, macOS |
-| Safari  | 153, 155, 170, 172, 180, 184, 260 | macOS, iOS |
+| Safari  | 153, 155, 170, 172, 180, 184, 260, 2601 | macOS, iOS |
 | Tor     | 145 | Linux, Windows, macOS |
 
 ## Response Format
