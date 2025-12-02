@@ -1,6 +1,7 @@
 // Main exports
 export { Cuimp } from './cuimp'
 export { CuimpHttp } from './client'
+export { CookieJar } from './helpers/cookieJar'
 import cuimp from './cuimp'
 
 // Type exports
@@ -11,7 +12,8 @@ export type {
   CuimpRequestConfig,
   CuimpResponse,
   CuimpOptions,
-  CuimpInstance
+  CuimpInstance,
+  CookieJarOption
 } from './types/cuimpTypes'
 
 export type { RunResult } from './types/runTypes'
@@ -37,7 +39,7 @@ export function createCuimpHttp(options?: CuimpOptions) {
     defaults.extraCurlArgs = options.extraCurlArgs
   }
   
-  return new CuimpHttp(core, defaults)
+  return new CuimpHttp(core, defaults, options?.cookieJar)
 }
 
 // Convenience function for quick HTTP requests

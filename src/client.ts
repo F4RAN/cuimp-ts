@@ -1,7 +1,8 @@
 import { Cuimp } from './cuimp';
 import { runBinary } from './runner';
-import type { CuimpInstance, CuimpRequestConfig, CuimpResponse, Method } from './types/cuimpTypes';
+import type { CuimpInstance, CuimpRequestConfig, CuimpResponse, Method, CookieJarOption } from './types/cuimpTypes';
 import { CurlError, CurlExitCode } from './types/curlErrors';
+import { CookieJar } from './helpers/cookieJar';
 
 function joinURL(base?: string, path?: string): string | undefined {
   if (!path) return base;
@@ -83,7 +84,43 @@ function getProxyFromEnvironment(): string | undefined {
 }
 
 export class CuimpHttp implements CuimpInstance {
-  constructor(private core: Cuimp, private defaults: Partial<CuimpRequestConfig> = {}) {}
+  private cookieJar: CookieJar | null = null;
+
+  constructor(
+    private core: Cuimp, 
+    private defaults: Partial<CuimpRequestConfig> = {},
+    cookieJarOption?: CookieJarOption
+  ) {
+    if (cookieJarOption) {
+      this.cookieJar = new CookieJar(cookieJarOption);
+    }
+  }
+
+  /**
+   * Get the cookie jar instance (if enabled)
+   */
+  getCookieJar(): CookieJar | null {
+    return this.cookieJar;
+  }
+
+  /**
+   * Clear all cookies in the jar
+   */
+  clearCookies(): void {
+    if (this.cookieJar) {
+      this.cookieJar.clear();
+    }
+  }
+
+  /**
+   * Destroy the client and clean up resources (including temporary cookie files)
+   */
+  destroy(): void {
+    if (this.cookieJar) {
+      this.cookieJar.destroy();
+      this.cookieJar = null;
+    }
+  }
 
   async request<T = any>(config: CuimpRequestConfig): Promise<CuimpResponse<T>> {
     const method: Method = (config.method || 'GET').toUpperCase() as Method;
@@ -155,6 +192,11 @@ export class CuimpHttp implements CuimpInstance {
           args.push('-H', 'Content-Type: application/json');
         }
       }
+    }
+
+    // Cookie jar arguments (if enabled)
+    if (this.cookieJar) {
+      args.push(...this.cookieJar.getCurlArgs());
     }
 
     // Extra curl arguments (from config or defaults)
