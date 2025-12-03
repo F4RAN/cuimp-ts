@@ -285,7 +285,7 @@ export class CuimpHttp implements CuimpInstance {
     // Split by HTTP/ and process each block
     const httpBlocks = headerText.split(/(?=HTTP\/)/);
     const validBlocks = httpBlocks.filter(block => 
-      block.trim() && (/^HTTP\/\d\.\d \d{3}/.test(block.trim()) || /^HTTP\/\d \d{3}/.test(block.trim()))
+      block.trim() && /^HTTP\/[1-3](?:\.\d)? \d{3}/.test(block.trim())
     );
     
     // Use the last valid HTTP response block
