@@ -804,6 +804,15 @@ Thanks to these awesome people who have contributed to this project:
       <sub>macOS Support</sub>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/reyzzz">
+        <img src="https://github.com/reyzzz.png" width="100px;" alt="reyzzz"/><br />
+        <sub><b>reyzzz</b></sub>
+      </a><br />
+      <sub>HTTP/2 Headers Fix</sub>
+    </td>
+  </tr>
 </table>
 
 ---
