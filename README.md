@@ -1,8 +1,31 @@
+<div align="center">
+
 # Cuimp
 
-A Node.js wrapper for [curl-impersonate](https://github.com/lexiforest/curl-impersonate) that allows you to make HTTP requests that mimic real browser behavior, bypassing many anti-bot protections.
+**A powerful Node.js wrapper for curl-impersonate**
 
-## Features
+[![npm version](https://img.shields.io/npm/v/cuimp.svg?style=flat-square)](https://www.npmjs.com/package/cuimp)
+[![npm downloads](https://img.shields.io/npm/dm/cuimp.svg?style=flat-square)](https://www.npmjs.com/package/cuimp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.17-brightgreen.svg?style=flat-square)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![GitHub Release](https://img.shields.io/github/v/release/F4RAN/cuimp-ts?style=flat-square)](https://github.com/F4RAN/cuimp-ts/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/F4RAN/cuimp-ts?style=flat-square)](https://github.com/F4RAN/cuimp-ts/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/F4RAN/cuimp-ts?style=flat-square)](https://github.com/F4RAN/cuimp-ts/issues)
+
+Make HTTP requests that mimic real browser behavior and bypass anti-bot protections with ease.
+
+[Features](#features) •
+[Installation](#installation) •
+[Quick Start](#quick-start) •
+[Documentation](#api-reference) •
+[Examples](#examples)
+
+</div>
+
+---
+
+## ✨ Features
 
 - 🚀 **Browser Impersonation**: Mimic Chrome, Firefox, Safari, and Edge browsers
 - 🔧 **Easy to Use**: Simple API similar to axios/fetch
@@ -14,13 +37,30 @@ A Node.js wrapper for [curl-impersonate](https://github.com/lexiforest/curl-impe
 - 📁 **Clean Installation**: Binaries stored in package directory, not your project root
 - 🍪 **Cookie Management**: Automatic cookie storage and sending across requests
 
-## Installation
+## 📑 Table of Contents
+
+- [Features](#-features)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Project Usage Examples](#project-usage-examples)
+- [API Reference](#api-reference)
+- [Configuration](#configuration)
+- [Supported Browsers](#supported-browsers)
+- [Response Format](#response-format)
+- [Binary Management](#binary-management)
+- [Troubleshooting](#troubleshooting)
+- [Requirements](#requirements)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Contributors](#-contributors)
+
+## 📦 Installation
 
 ```bash
 npm install cuimp
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ```javascript
 import { get, post, createCuimpHttp } from 'cuimp'
@@ -699,27 +739,88 @@ const binaryPath = await cuimp.verifyBinary()
 console.log('Binary path:', binaryPath)
 ```
 
-## License
+## 📄 License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions, issues, and feature requests are welcome!
 
-## Links
+Feel free to check the [issues page](https://github.com/F4RAN/cuimp-ts/issues) if you want to contribute.
 
-- [GitHub Repository](https://github.com/f4ran/cuimp-ts)
-- [curl-impersonate](https://github.com/lexiforest/curl-impersonate)
-- [npm Package](https://www.npmjs.com/package/cuimp)
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-# Contributors
+## 🔗 Links
 
-Thanks to these awesome people:
+- **NPM Package**: [npmjs.com/package/cuimp](https://www.npmjs.com/package/cuimp)
+- **GitHub Repository**: [github.com/F4RAN/cuimp-ts](https://github.com/F4RAN/cuimp-ts)
+- **curl-impersonate**: [github.com/lexiforest/curl-impersonate](https://github.com/lexiforest/curl-impersonate)
+- **Issues & Bug Reports**: [github.com/F4RAN/cuimp-ts/issues](https://github.com/F4RAN/cuimp-ts/issues)
 
+## 👥 Contributors
 
-- [@F4RAN](https://github.com/F4RAN) - Original author and maintainer
-- [@ma-joel](https://github.com/ma-joel) - CI build, non-UTF-8 encoding support, redirect fixes
-- [@parigi-n](https://github.com/parigi-n) - Additional bug fixes and improvements
-- [@nvitaterna](https://github.com/nvitaterna) - Additional bug fixes and improvements
-- [@tony13tv](https://github.com/tony13tv) - macOS support
+Thanks to these awesome people who have contributed to this project:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/F4RAN">
+        <img src="https://github.com/F4RAN.png" width="100px;" alt="F4RAN"/><br />
+        <sub><b>F4RAN</b></sub>
+      </a><br />
+      <sub>Original Author & Maintainer</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/ma-joel">
+        <img src="https://github.com/ma-joel.png" width="100px;" alt="ma-joel"/><br />
+        <sub><b>ma-joel</b></sub>
+      </a><br />
+      <sub>CI, Encoding & Redirects</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/parigi-n">
+        <img src="https://github.com/parigi-n.png" width="100px;" alt="parigi-n"/><br />
+        <sub><b>parigi-n</b></sub>
+      </a><br />
+      <sub>Bug Fixes</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/nvitaterna">
+        <img src="https://github.com/nvitaterna.png" width="100px;" alt="nvitaterna"/><br />
+        <sub><b>nvitaterna</b></sub>
+      </a><br />
+      <sub>Bug Fixes</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/tony13tv">
+        <img src="https://github.com/tony13tv.png" width="100px;" alt="tony13tv"/><br />
+        <sub><b>tony13tv</b></sub>
+      </a><br />
+      <sub>macOS Support</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/reyzzz">
+        <img src="https://github.com/reyzzz.png" width="100px;" alt="reyzzz"/><br />
+        <sub><b>reyzzz</b></sub>
+      </a><br />
+      <sub>HTTP/2 Headers Fix</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
+<div align="center">
+
+**If you find this project useful, please consider giving it a ⭐️!**
+
+Made with ❤️ by the Cuimp community
+
+</div>
