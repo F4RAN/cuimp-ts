@@ -16,21 +16,21 @@ export function runBinary(
     const isBatFile = binPath.toLowerCase().endsWith('.bat');
     const needsShell = isWindows && isBatFile;
     
-    // On Windows, look for CA bundle in the same directory as the binary
+    // On Windows, add --cacert argument if CA bundle exists and not already specified
     // This fixes SSL certificate verification issues
-    const env = { ...process.env };
-    if (isWindows && !env.CURL_CA_BUNDLE) {
+    let finalArgs = args;
+    if (isWindows && !args.includes('--cacert') && !args.includes('-k')) {
       const binDir = path.dirname(binPath);
       const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt');
       if (fs.existsSync(caBundlePath)) {
-        env.CURL_CA_BUNDLE = caBundlePath;
+        // Prepend --cacert to args so it's processed before the URL
+        finalArgs = ['--cacert', caBundlePath, ...args];
       }
     }
     
-    const child = spawn(binPath, args, { 
+    const child = spawn(binPath, finalArgs, { 
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: needsShell,
-      env
+      shell: needsShell
     });
 
     let killedByTimeout = false;
