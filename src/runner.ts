@@ -28,6 +28,19 @@ export function runBinary(
       }
     }
     
+    // When using shell: true on Windows, we need to properly quote arguments
+    // to prevent & and other shell metacharacters from being interpreted
+    if (needsShell) {
+      finalArgs = finalArgs.map(arg => {
+        // If arg contains shell metacharacters, wrap in double quotes
+        // and escape any existing double quotes
+        if (/[&|<>^"\s]/.test(arg)) {
+          return `"${arg.replace(/"/g, '\\"')}"`;
+        }
+        return arg;
+      });
+    }
+    
     const child = spawn(binPath, finalArgs, { 
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: needsShell
