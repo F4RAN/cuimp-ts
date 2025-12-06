@@ -1,7 +1,5 @@
 import { spawn } from 'node:child_process';
 import { RunResult } from './types/runTypes';
-import path from 'path';
-import fs from 'fs';
 
 
 
@@ -11,35 +9,15 @@ export function runBinary(
   opts?: { timeout?: number; signal?: AbortSignal }
 ): Promise<RunResult> {
   return new Promise((resolve, reject) => {
-    // Normalize the binary path for Windows compatibility
-    // On Windows, ensure the path uses proper separators and is absolute
-    let normalizedPath = path.normalize(binPath)
+    // On Windows, .bat files need shell: true to execute properly
+    const isWindows = process.platform === 'win32';
+    const isBatFile = binPath.toLowerCase().endsWith('.bat');
+    const needsShell = isWindows && isBatFile;
     
-    // On Windows, ensure we have an absolute path
-    if (process.platform === 'win32' && !path.isAbsolute(normalizedPath)) {
-      normalizedPath = path.resolve(normalizedPath)
-    }
-    
-    // Verify the file exists before spawning (helps with better error messages)
-    if (!fs.existsSync(normalizedPath)) {
-      return reject(new Error(`Binary not found: ${normalizedPath}`))
-    }
-    
-    const spawnOptions = {
-      stdio: ['ignore', 'pipe', 'pipe'] as const
-    }
-    
-    const child = spawn(normalizedPath, args, spawnOptions)
-    setupChildProcess(child, resolve, reject, opts)
-  })
-}
-
-function setupChildProcess(
-  child: ReturnType<typeof spawn>,
-  resolve: (value: RunResult) => void,
-  reject: (reason?: any) => void,
-  opts?: { timeout?: number; signal?: AbortSignal }
-): void {
+    const child = spawn(binPath, args, { 
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: needsShell
+    });
 
     let killedByTimeout = false;
     let t: NodeJS.Timeout | undefined;
@@ -83,4 +61,5 @@ function setupChildProcess(
         stderr: Buffer.concat(err),
       });
     });
+  });
 }

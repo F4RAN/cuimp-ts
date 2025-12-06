@@ -63,12 +63,22 @@ const BINARY_SEARCH_PATHS = [
 ]
 
 // Binary name patterns to search for
+// Windows binaries can be .exe or .bat files
 const BINARY_PATTERNS = [
     'curl-impersonate',
     'curl-impersonate.exe',
+    'curl-impersonate.bat',
+    'curl_chrome*.exe',
+    'curl_chrome*.bat',
     'curl_chrome*',
+    'curl_firefox*.exe',
+    'curl_firefox*.bat',
     'curl_firefox*',
+    'curl_edge*.exe',
+    'curl_edge*.bat',
     'curl_edge*',
+    'curl_safari*.exe',
+    'curl_safari*.bat',
     'curl_safari*',
 ]
 
@@ -269,8 +279,8 @@ const downloadAndExtractBinary = async (
             ? [path.resolve(binariesDir, 'bin'), binariesDir]
             : [binariesDir]
         
-        // Binary name patterns to search for (Windows uses .exe extension)
-        const binaryExtensions = platform === 'windows' ? ['', '.exe'] : ['']
+        // Binary name patterns to search for (Windows uses .exe or .bat extension)
+        const binaryExtensions = platform === 'windows' ? ['.exe', '.bat', ''] : ['']
         const mainBinaryNames = binaryExtensions.map(ext => `curl-impersonate${ext}`)
         const browserSpecificPattern = `curl_${browser}*`
         
