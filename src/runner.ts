@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import { RunResult } from './types/runTypes';
+import path from 'node:path';
+import fs from 'node:fs';
 
 
 
@@ -14,9 +16,21 @@ export function runBinary(
     const isBatFile = binPath.toLowerCase().endsWith('.bat');
     const needsShell = isWindows && isBatFile;
     
+    // On Windows, look for CA bundle in the same directory as the binary
+    // This fixes SSL certificate verification issues
+    const env = { ...process.env };
+    if (isWindows && !env.CURL_CA_BUNDLE) {
+      const binDir = path.dirname(binPath);
+      const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt');
+      if (fs.existsSync(caBundlePath)) {
+        env.CURL_CA_BUNDLE = caBundlePath;
+      }
+    }
+    
     const child = spawn(binPath, args, { 
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: needsShell
+      shell: needsShell,
+      env
     });
 
     let killedByTimeout = false;
