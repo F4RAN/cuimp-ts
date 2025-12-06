@@ -63,12 +63,22 @@ const BINARY_SEARCH_PATHS = [
 ]
 
 // Binary name patterns to search for
+// Windows binaries can be .exe or .bat files
 const BINARY_PATTERNS = [
     'curl-impersonate',
     'curl-impersonate.exe',
+    'curl-impersonate.bat',
+    'curl_chrome*.exe',
+    'curl_chrome*.bat',
     'curl_chrome*',
+    'curl_firefox*.exe',
+    'curl_firefox*.bat',
     'curl_firefox*',
+    'curl_edge*.exe',
+    'curl_edge*.bat',
     'curl_edge*',
+    'curl_safari*.exe',
+    'curl_safari*.bat',
     'curl_safari*',
 ]
 
@@ -135,8 +145,16 @@ const findExistingBinary = (browser: string = ''): string | null => {
     const packageDir = getPackageDir()
     const packageBinariesDir = path.resolve(packageDir, 'cuimp/binaries')
 
-    // Create search paths including both directories
-    const searchPaths = [homeBinariesDir, packageBinariesDir, ...BINARY_SEARCH_PATHS]
+    // On Windows, binaries are extracted to a 'bin' subdirectory
+    // Create search paths including both directories and Windows-specific bin subdirectory
+    const isWindows = process.platform === 'win32'
+    const searchPaths = [
+        homeBinariesDir,
+        ...(isWindows ? [path.resolve(homeBinariesDir, 'bin')] : []),
+        packageBinariesDir,
+        ...(isWindows ? [path.resolve(packageBinariesDir, 'bin')] : []),
+        ...BINARY_SEARCH_PATHS
+    ]
 
     for (const searchPath of searchPaths) {
         for (const pattern of patternsToSearch) {
@@ -211,6 +229,10 @@ const downloadAndExtractBinary = async (
             // macos uses specific naming: x86_64-macos, arm64-macos, etc.
             const macosArch = architecture === 'x64' ? 'x86_64' : 'arm64'
             assetName = `curl-impersonate-${latestVersion}.${macosArch}-macos.tar.gz`
+        } else if (platform === 'windows') {
+            // Windows uses libcurl-impersonate prefix and win32 suffix: x86_64-win32, arm64-win32, etc.
+            const windowsArch = architecture === 'x64' ? 'x86_64' : 'arm64'
+            assetName = `libcurl-impersonate-${latestVersion}.${windowsArch}-win32.tar.gz`
         } else {
             // Other platforms use the original naming
             assetName = `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
@@ -251,45 +273,95 @@ const downloadAndExtractBinary = async (
         // Clean up temporary file
         fs.unlinkSync(tempFileName)
         
-        // Find the extracted binary file in the binaries directory
-        // The main binary is usually named 'curl-impersonate'
-        const mainBinaryName = 'curl-impersonate'
-        const binaryPath = path.resolve(binariesDir, mainBinaryName)
+        // On Windows, binaries are extracted to a 'bin' subdirectory
+        // On other platforms, they're extracted directly to binariesDir
+        const searchDirs = platform === 'windows' 
+            ? [path.resolve(binariesDir, 'bin'), binariesDir]
+            : [binariesDir]
         
-        // Check if the main binary was extracted
-        if (!fs.existsSync(binaryPath)) {
-            // If main binary not found, look for browser-specific binaries
-            const browserSpecificPattern = `curl_${browser}*`
-            const files = fs.readdirSync(binariesDir)
-            const matchingFiles = files.filter(file => {
-                const regex = new RegExp(browserSpecificPattern.replace('*', '.*'))
-                return regex.test(file)
-            })
+        // Binary name patterns to search for (Windows uses .exe or .bat extension)
+        const binaryExtensions = platform === 'windows' ? ['.exe', '.bat', ''] : ['']
+        const mainBinaryNames = binaryExtensions.map(ext => `curl-impersonate${ext}`)
+        const browserSpecificPattern = `curl_${browser}*`
+        
+        let binaryPath: string | null = null
+        
+        // First, try to find the main binary (curl-impersonate)
+        for (const searchDir of searchDirs) {
+            if (!fs.existsSync(searchDir)) continue
             
-            if (matchingFiles.length > 0) {
-                // Use the highest version browser-specific binary
-                const sortedFiles = matchingFiles.sort((a, b) => {
-                    const versionA = extractVersionNumber(a)
-                    const versionB = extractVersionNumber(b)
-                    return versionB - versionA // Sort in descending order (highest first)
-                })
-                const bestMatch = sortedFiles[0]
-                const browserBinaryPath = path.resolve(binariesDir, bestMatch)
-                
-                // Set executable permissions on the browser-specific binary
-                fs.chmodSync(browserBinaryPath, 0o755)
-                
-                return {
-                    binaryPath: browserBinaryPath,
-                    version: actualVersion
+            for (const mainBinaryName of mainBinaryNames) {
+                const candidatePath = path.resolve(searchDir, mainBinaryName)
+                if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile()) {
+                    binaryPath = candidatePath
+                    break
                 }
             }
-            
-            throw new Error(`Binary not found after extraction. Expected: ${binaryPath}`)
+            if (binaryPath) break
         }
         
-        // Set executable permissions on the main binary
-        fs.chmodSync(binaryPath, 0o755)
+        // If main binary not found, look for browser-specific binaries
+        if (!binaryPath) {
+            for (const searchDir of searchDirs) {
+                if (!fs.existsSync(searchDir)) continue
+                
+                const files = fs.readdirSync(searchDir)
+                const matchingFiles = files.filter(file => {
+                    const regex = new RegExp(browserSpecificPattern.replace('*', '.*'))
+                    return regex.test(file) && fs.statSync(path.resolve(searchDir, file)).isFile()
+                })
+                
+                if (matchingFiles.length > 0) {
+                    // Use the highest version browser-specific binary
+                    const sortedFiles = matchingFiles.sort((a, b) => {
+                        const versionA = extractVersionNumber(a)
+                        const versionB = extractVersionNumber(b)
+                        return versionB - versionA // Sort in descending order (highest first)
+                    })
+                    const bestMatch = sortedFiles[0]
+                    binaryPath = path.resolve(searchDir, bestMatch)
+                    break
+                }
+            }
+        }
+        
+        if (!binaryPath) {
+            throw new Error(
+                `Binary not found after extraction. Searched in: ${searchDirs.join(', ')}. ` +
+                `Expected: curl-impersonate${platform === 'windows' ? '.exe' : ''} or curl_${browser}*`
+            )
+        }
+        
+        // Set executable permissions on the binary (chmod may not work on Windows, but it's safe to try)
+        try {
+            fs.chmodSync(binaryPath, 0o755)
+        } catch (error) {
+            // On Windows, chmod might fail, but that's okay - the file is still executable
+            if (platform !== 'windows') {
+                throw error
+            }
+        }
+        
+        // On Windows, download CA bundle if not present (required for SSL verification)
+        if (platform === 'windows') {
+            const binDir = path.dirname(binaryPath)
+            const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt')
+            if (!fs.existsSync(caBundlePath)) {
+                logger.info('Downloading CA certificate bundle for Windows...')
+                try {
+                    const caResponse = await fetch('https://curl.se/ca/cacert.pem')
+                    if (caResponse.ok) {
+                        const caBundle = await caResponse.text()
+                        fs.writeFileSync(caBundlePath, caBundle)
+                        logger.info(`CA bundle saved to ${caBundlePath}`)
+                    } else {
+                        logger.warn('Failed to download CA bundle - SSL verification may fail')
+                    }
+                } catch (caError) {
+                    logger.warn(`Failed to download CA bundle: ${caError instanceof Error ? caError.message : String(caError)}`)
+                }
+            }
+        }
         
         return {
             binaryPath: binaryPath,
@@ -356,21 +428,18 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor, logger: Logge
         if (!forceDownload) {
             const existingBinary = findExistingBinary(browser)
             if (existingBinary) {
-                const existingVersion = extractVersionNumber(path.basename(existingBinary)).toString()
+                // Extract browser version from filename (e.g., curl_chrome136 -> 136)
+                // Note: This is the browser version, not the curl-impersonate release version
+                const browserVersion = extractVersionNumber(path.basename(existingBinary)).toString()
 
-                // For 'latest', accept any existing binary
-                // For specific version, check if it matches
-                const versionMatches = version === 'latest' || existingVersion === version
-
-                if (versionMatches) {
-                    logger.info(`Found existing binary: ${existingBinary}`)
-                    return {
-                        binaryPath: existingBinary,
-                        isDownloaded: false,
-                        version: existingVersion || 'unknown'
-                    }
-                } else {
-                    logger.warn(`Found binary version ${existingVersion}, but version ${version} was requested. Re-downloading...`)
+                // Accept any existing binary for the requested browser
+                // The 'version' field in descriptor refers to curl-impersonate release version,
+                // which we can't easily determine from the cached binary filename
+                logger.info(`Found existing binary: ${existingBinary}`)
+                return {
+                    binaryPath: existingBinary,
+                    isDownloaded: false,
+                    version: browserVersion || 'unknown'
                 }
             }
         } else {

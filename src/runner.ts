@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import { RunResult } from './types/runTypes';
+import path from 'node:path';
+import fs from 'node:fs';
 
 
 
@@ -9,7 +11,40 @@ export function runBinary(
   opts?: { timeout?: number; signal?: AbortSignal }
 ): Promise<RunResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(binPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    // On Windows, .bat files need shell: true to execute properly
+    const isWindows = process.platform === 'win32';
+    const isBatFile = binPath.toLowerCase().endsWith('.bat');
+    const needsShell = isWindows && isBatFile;
+    
+    // On Windows, add --cacert argument if CA bundle exists and not already specified
+    // This fixes SSL certificate verification issues
+    let finalArgs = args;
+    if (isWindows && !args.includes('--cacert') && !args.includes('-k')) {
+      const binDir = path.dirname(binPath);
+      const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt');
+      if (fs.existsSync(caBundlePath)) {
+        // Prepend --cacert to args so it's processed before the URL
+        finalArgs = ['--cacert', caBundlePath, ...args];
+      }
+    }
+    
+    // When using shell: true on Windows, we need to properly quote arguments
+    // to prevent & and other shell metacharacters from being interpreted
+    if (needsShell) {
+      finalArgs = finalArgs.map(arg => {
+        // If arg contains shell metacharacters, wrap in double quotes
+        // and escape any existing double quotes
+        if (/[&|<>^"\s]/.test(arg)) {
+          return `"${arg.replace(/"/g, '\\"')}"`;
+        }
+        return arg;
+      });
+    }
+    
+    const child = spawn(binPath, finalArgs, { 
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: needsShell
+    });
 
     let killedByTimeout = false;
     let t: NodeJS.Timeout | undefined;
