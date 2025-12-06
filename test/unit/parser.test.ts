@@ -68,6 +68,14 @@ describe('parseDescriptor', () => {
       ok: true,
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
     })
+    
+    // Default: directories don't exist, so readdirSync throws (simulating real behavior)
+    mockFs.readdirSync.mockImplementation(() => {
+      throw new Error('ENOENT: no such file or directory')
+    })
+    
+    // Default: files don't exist
+    mockFs.existsSync.mockReturnValue(false)
   })
 
   afterEach(() => {
@@ -75,10 +83,17 @@ describe('parseDescriptor', () => {
   })
 
   it('should always download binary (force download)', async () => {
-    mockFs.existsSync.mockReturnValue(false)
+    // Mock: binary exists after extraction, binaries directory exists
+    mockFs.existsSync.mockImplementation((path: string) => {
+      // Return true for binaries directory and binary path check after extraction
+      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+        return true
+      }
+      return false
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
-    const descriptor: CuimpDescriptor = { browser: 'chrome' }
+    const descriptor: CuimpDescriptor = { browser: 'chrome', forceDownload: true }
     const result = await parseDescriptor(descriptor)
 
     expect(mockGetLatestRelease).toHaveBeenCalled()
@@ -87,7 +102,14 @@ describe('parseDescriptor', () => {
   })
 
   it('should download binary if not found locally', async () => {
-    mockFs.existsSync.mockReturnValue(false)
+    // Mock: binary exists after extraction, binaries directory exists
+    mockFs.existsSync.mockImplementation((path: string) => {
+      // Return true for binaries directory and binary path check after extraction
+      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+        return true
+      }
+      return false
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { 
@@ -104,7 +126,14 @@ describe('parseDescriptor', () => {
   })
 
   it('should handle empty descriptor', async () => {
-    mockFs.existsSync.mockReturnValue(false)
+    // Mock: binary exists after extraction, binaries directory exists
+    mockFs.existsSync.mockImplementation((path: string) => {
+      // Return true for binaries directory and binary path check after extraction
+      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+        return true
+      }
+      return false
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
     
     const descriptor: CuimpDescriptor = {}
@@ -115,7 +144,14 @@ describe('parseDescriptor', () => {
   })
 
   it('should handle partial descriptor', async () => {
-    mockFs.existsSync.mockReturnValue(false)
+    // Mock: binary exists after extraction, binaries directory exists
+    mockFs.existsSync.mockImplementation((path: string) => {
+      // Return true for binaries directory and binary path check after extraction
+      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+        return true
+      }
+      return false
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
@@ -170,6 +206,12 @@ describe('parseDescriptor', () => {
   it('should handle missing assets in release', async () => {
     mockFs.existsSync.mockReturnValue(false)
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
+    // Mock fetch to return 404
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    })
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
     
@@ -177,7 +219,14 @@ describe('parseDescriptor', () => {
   })
 
   it('should handle multiple assets and select correct one', async () => {
-    mockFs.existsSync.mockReturnValue(false)
+    // Mock: binary exists after extraction, binaries directory exists
+    mockFs.existsSync.mockImplementation((path: string) => {
+      // Return true for binaries directory and binary path check after extraction
+      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+        return true
+      }
+      return false
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { 

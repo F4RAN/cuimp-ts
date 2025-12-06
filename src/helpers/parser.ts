@@ -211,6 +211,10 @@ const downloadAndExtractBinary = async (
             // macos uses specific naming: x86_64-macos, arm64-macos, etc.
             const macosArch = architecture === 'x64' ? 'x86_64' : 'arm64'
             assetName = `curl-impersonate-${latestVersion}.${macosArch}-macos.tar.gz`
+        } else if (platform === 'windows') {
+            // Windows uses libcurl-impersonate prefix and win32 suffix: x86_64-win32, arm64-win32, etc.
+            const windowsArch = architecture === 'x64' ? 'x86_64' : 'arm64'
+            assetName = `libcurl-impersonate-${latestVersion}.${windowsArch}-win32.tar.gz`
         } else {
             // Other platforms use the original naming
             assetName = `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
