@@ -428,21 +428,18 @@ export const parseDescriptor = async (descriptor: CuimpDescriptor, logger: Logge
         if (!forceDownload) {
             const existingBinary = findExistingBinary(browser)
             if (existingBinary) {
-                const existingVersion = extractVersionNumber(path.basename(existingBinary)).toString()
+                // Extract browser version from filename (e.g., curl_chrome136 -> 136)
+                // Note: This is the browser version, not the curl-impersonate release version
+                const browserVersion = extractVersionNumber(path.basename(existingBinary)).toString()
 
-                // For 'latest', accept any existing binary
-                // For specific version, check if it matches
-                const versionMatches = version === 'latest' || existingVersion === version
-
-                if (versionMatches) {
-                    logger.info(`Found existing binary: ${existingBinary}`)
-                    return {
-                        binaryPath: existingBinary,
-                        isDownloaded: false,
-                        version: existingVersion || 'unknown'
-                    }
-                } else {
-                    logger.warn(`Found binary version ${existingVersion}, but version ${version} was requested. Re-downloading...`)
+                // Accept any existing binary for the requested browser
+                // The 'version' field in descriptor refers to curl-impersonate release version,
+                // which we can't easily determine from the cached binary filename
+                logger.info(`Found existing binary: ${existingBinary}`)
+                return {
+                    binaryPath: existingBinary,
+                    isDownloaded: false,
+                    version: browserVersion || 'unknown'
                 }
             }
         } else {
