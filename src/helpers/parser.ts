@@ -342,6 +342,27 @@ const downloadAndExtractBinary = async (
             }
         }
         
+        // On Windows, download CA bundle if not present (required for SSL verification)
+        if (platform === 'windows') {
+            const binDir = path.dirname(binaryPath)
+            const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt')
+            if (!fs.existsSync(caBundlePath)) {
+                logger.info('Downloading CA certificate bundle for Windows...')
+                try {
+                    const caResponse = await fetch('https://curl.se/ca/cacert.pem')
+                    if (caResponse.ok) {
+                        const caBundle = await caResponse.text()
+                        fs.writeFileSync(caBundlePath, caBundle)
+                        logger.info(`CA bundle saved to ${caBundlePath}`)
+                    } else {
+                        logger.warn('Failed to download CA bundle - SSL verification may fail')
+                    }
+                } catch (caError) {
+                    logger.warn(`Failed to download CA bundle: ${caError instanceof Error ? caError.message : String(caError)}`)
+                }
+            }
+        }
+        
         return {
             binaryPath: binaryPath,
             version: actualVersion
