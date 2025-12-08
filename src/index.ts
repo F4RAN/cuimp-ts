@@ -13,7 +13,7 @@ export type {
   CuimpResponse,
   CuimpOptions,
   CuimpInstance,
-  CookieJarOption
+  CookieJarOption,
 } from './types/cuimpTypes'
 
 export type { RunResult } from './types/runTypes'
@@ -33,12 +33,12 @@ import type { CuimpOptions, CuimpRequestConfig } from './types/cuimpTypes'
 export function createCuimpHttp(options?: CuimpOptions) {
   const core = new Cuimp(options)
   const defaults: Partial<CuimpRequestConfig> = {}
-  
+
   // Pass extraCurlArgs from options to defaults if provided
   if (options?.extraCurlArgs) {
     defaults.extraCurlArgs = options.extraCurlArgs
   }
-  
+
   return new CuimpHttp(core, defaults, options?.cookieJar)
 }
 
@@ -49,37 +49,61 @@ export async function request<T = any>(config: CuimpRequestConfig) {
 }
 
 // Convenience functions for common HTTP methods
-export async function get<T = any>(url: string, config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
+export async function get<T = any>(
+  url: string,
+  config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+) {
   const client = createCuimpHttp()
   return client.get<T>(url, config)
 }
 
-export async function post<T = any>(url: string, data?: CuimpRequestConfig['data'], config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
+export async function post<T = any>(
+  url: string,
+  data?: CuimpRequestConfig['data'],
+  config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+) {
   const client = createCuimpHttp()
   return client.post<T>(url, data, config)
 }
 
-export async function put<T = any>(url: string, data?: CuimpRequestConfig['data'], config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
+export async function put<T = any>(
+  url: string,
+  data?: CuimpRequestConfig['data'],
+  config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+) {
   const client = createCuimpHttp()
   return client.put<T>(url, data, config)
 }
 
-export async function patch<T = any>(url: string, data?: CuimpRequestConfig['data'], config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
+export async function patch<T = any>(
+  url: string,
+  data?: CuimpRequestConfig['data'],
+  config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+) {
   const client = createCuimpHttp()
   return client.patch<T>(url, data, config)
 }
 
-export async function del<T = any>(url: string, config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
+export async function del<T = any>(
+  url: string,
+  config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+) {
   const client = createCuimpHttp()
   return client.delete<T>(url, config)
 }
 
-export async function head<T = any>(url: string, config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
+export async function head<T = any>(
+  url: string,
+  config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+) {
   const client = createCuimpHttp()
   return client.head<T>(url, config)
 }
 
-export async function options<T = any>(url: string, config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>) {
+export async function options<T = any>(
+  url: string,
+  config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+) {
   const client = createCuimpHttp()
   return client.options<T>(url, config)
 }
@@ -90,11 +114,10 @@ export async function downloadBinary(options?: CuimpOptions) {
   return cuimp.download()
 }
 
-
 export async function __smoke() {
   const cu = new Cuimp()
   const info = await cu.verifyBinary()
-  console.log('Binary:', info)  
+  console.log('Binary:', info)
   const cmd = cu.buildCommandPreview('https://example.com', 'GET')
   console.log('Preview:', cmd)
 

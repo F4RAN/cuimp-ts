@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 
 // Mock child_process
 vi.mock('node:child_process', () => ({
-  spawn: vi.fn()
+  spawn: vi.fn(),
 }))
 
 describe('runBinary', () => {
@@ -13,19 +13,19 @@ describe('runBinary', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
+
     // Create a mock child process
     mockChildProcess = {
       kill: vi.fn(),
       stdout: {
-        on: vi.fn()
+        on: vi.fn(),
       },
       stderr: {
-        on: vi.fn()
+        on: vi.fn(),
       },
-      on: vi.fn()
+      on: vi.fn(),
     }
-    
+
     mockSpawn.mockReturnValue(mockChildProcess)
   })
 
@@ -36,7 +36,7 @@ describe('runBinary', () => {
   it('should resolve with successful result', async () => {
     const mockStdout = Buffer.from('output data')
     const mockStderr = Buffer.from('error data')
-    
+
     // Mock successful execution
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
@@ -44,14 +44,14 @@ describe('runBinary', () => {
         setTimeout(() => callback(0), 10)
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         // Simulate stdout data
         setTimeout(() => callback(mockStdout), 5)
       }
     })
-    
+
     mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         // Simulate stderr data
@@ -59,60 +59,67 @@ describe('runBinary', () => {
       }
     })
 
-    const result = await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'])
+    const result = await runBinary('/usr/bin/curl-impersonate', [
+      '-X',
+      'GET',
+      'https://example.com',
+    ])
 
     expect(result).toEqual({
       exitCode: 0,
       stdout: mockStdout,
-      stderr: mockStderr
+      stderr: mockStderr,
     })
-    
+
     expect(mockSpawn).toHaveBeenCalledWith(
       '/usr/bin/curl-impersonate',
       ['-X', 'GET', 'https://example.com'],
       expect.objectContaining({
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
       })
     )
   })
 
   it('should handle process error', async () => {
     const error = new Error('Process failed to start')
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'error') {
         setTimeout(() => callback(error), 10)
       }
     })
 
-    await expect(runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com']))
-      .rejects.toThrow('Process failed to start')
+    await expect(
+      runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'])
+    ).rejects.toThrow('Process failed to start')
   })
 
   it('should handle timeout', async () => {
     const timeout = 50
     let closeCallback: Function | undefined
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         closeCallback = callback
         // Don't call close immediately to trigger timeout
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation(() => {})
     mockChildProcess.stderr.on.mockImplementation(() => {})
 
-    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { timeout })
-    
+    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], {
+      timeout,
+    })
+
     // Wait for timeout to fire
     await new Promise(resolve => setTimeout(resolve, timeout + 10))
-    
+
     // After timeout kills the process, close event should fire
     if (closeCallback) {
       closeCallback(null) // null exit code after kill
     }
-    
+
     await expect(promise).rejects.toThrow(`Request timed out after ${timeout} ms`)
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
   }, 1000)
@@ -120,30 +127,30 @@ describe('runBinary', () => {
   it('should handle abort signal', async () => {
     const abortController = new AbortController()
     let closeCallback: Function | undefined
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         closeCallback = callback
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation(() => {})
     mockChildProcess.stderr.on.mockImplementation(() => {})
 
     // Start the request
-    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { 
-      signal: abortController.signal 
+    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], {
+      signal: abortController.signal,
     })
-    
+
     // Abort the request
     abortController.abort()
-    
+
     // After abort kills the process, close event should fire
     await new Promise(resolve => setTimeout(resolve, 10))
     if (closeCallback) {
       closeCallback(null) // null exit code after kill
     }
-    
+
     await expect(promise).rejects.toThrow()
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
   }, 1000)
@@ -151,27 +158,27 @@ describe('runBinary', () => {
   it('should handle already aborted signal', async () => {
     const abortController = new AbortController()
     abortController.abort() // Abort before starting
-    
+
     let closeCallback: Function | undefined
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         closeCallback = callback
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation(() => {})
     mockChildProcess.stderr.on.mockImplementation(() => {})
-    
-    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { 
-      signal: abortController.signal 
+
+    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], {
+      signal: abortController.signal,
     })
-    
+
     // After abort kills the process, close event should fire
     await new Promise(resolve => setTimeout(resolve, 10))
     if (closeCallback) {
       closeCallback(null) // null exit code after kill
     }
-    
+
     await expect(promise).rejects.toThrow()
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
   }, 1000)
@@ -181,13 +188,13 @@ describe('runBinary', () => {
     const chunk2 = Buffer.from('chunk2')
     const expectedStdout = Buffer.concat([chunk1, chunk2])
     const mockStderr = Buffer.from('')
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         setTimeout(() => callback(0), 20)
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         // Simulate multiple chunks
@@ -195,14 +202,18 @@ describe('runBinary', () => {
         setTimeout(() => callback(chunk2), 10)
       }
     })
-    
+
     mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStderr), 5)
       }
     })
 
-    const result = await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'])
+    const result = await runBinary('/usr/bin/curl-impersonate', [
+      '-X',
+      'GET',
+      'https://example.com',
+    ])
 
     expect(result.stdout).toEqual(expectedStdout)
   })
@@ -212,19 +223,19 @@ describe('runBinary', () => {
     const chunk1 = Buffer.from('error1')
     const chunk2 = Buffer.from('error2')
     const expectedStderr = Buffer.concat([chunk1, chunk2])
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         setTimeout(() => callback(0), 20)
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStdout), 5)
       }
     })
-    
+
     mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         // Simulate multiple chunks
@@ -233,7 +244,11 @@ describe('runBinary', () => {
       }
     })
 
-    const result = await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'])
+    const result = await runBinary('/usr/bin/curl-impersonate', [
+      '-X',
+      'GET',
+      'https://example.com',
+    ])
 
     expect(result.stderr).toEqual(expectedStderr)
   })
@@ -241,26 +256,30 @@ describe('runBinary', () => {
   it('should handle non-zero exit code', async () => {
     const mockStdout = Buffer.from('output')
     const mockStderr = Buffer.from('error')
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         setTimeout(() => callback(1), 10) // Non-zero exit code
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStdout), 5)
       }
     })
-    
+
     mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStderr), 5)
       }
     })
 
-    const result = await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'])
+    const result = await runBinary('/usr/bin/curl-impersonate', [
+      '-X',
+      'GET',
+      'https://example.com',
+    ])
 
     expect(result.exitCode).toBe(1)
     expect(result.stdout).toEqual(mockStdout)
@@ -270,26 +289,30 @@ describe('runBinary', () => {
   it('should handle null exit code', async () => {
     const mockStdout = Buffer.from('output')
     const mockStderr = Buffer.from('error')
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         setTimeout(() => callback(null), 10) // Null exit code
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStdout), 5)
       }
     })
-    
+
     mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStderr), 5)
       }
     })
 
-    const result = await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'])
+    const result = await runBinary('/usr/bin/curl-impersonate', [
+      '-X',
+      'GET',
+      'https://example.com',
+    ])
 
     expect(result.exitCode).toBe(null)
     expect(result.stdout).toEqual(mockStdout)
@@ -299,26 +322,28 @@ describe('runBinary', () => {
   it('should not set timeout when timeout is 0', async () => {
     const mockStdout = Buffer.from('output')
     const mockStderr = Buffer.from('')
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         setTimeout(() => callback(0), 10)
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStdout), 5)
       }
     })
-    
+
     mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStderr), 5)
       }
     })
 
-    await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { timeout: 0 })
+    await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], {
+      timeout: 0,
+    })
 
     // Should not have called kill due to timeout
     expect(mockChildProcess.kill).not.toHaveBeenCalled()
@@ -327,26 +352,28 @@ describe('runBinary', () => {
   it('should not set timeout when timeout is negative', async () => {
     const mockStdout = Buffer.from('output')
     const mockStderr = Buffer.from('')
-    
+
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
         setTimeout(() => callback(0), 10)
       }
     })
-    
+
     mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStdout), 5)
       }
     })
-    
+
     mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'data') {
         setTimeout(() => callback(mockStderr), 5)
       }
     })
 
-    await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { timeout: -1 })
+    await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], {
+      timeout: -1,
+    })
 
     // Should not have called kill due to timeout
     expect(mockChildProcess.kill).not.toHaveBeenCalled()

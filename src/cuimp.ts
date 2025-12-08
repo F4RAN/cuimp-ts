@@ -8,20 +8,20 @@ class Cuimp {
   private path: string
   private binaryInfo?: BinaryInfo
   private logger: Logger
-  
+
   constructor(options?: CuimpOptions) {
     this.descriptor = options?.descriptor || {}
     this.path = options?.path || ''
     this.logger = options?.logger ?? console
   }
-  
+
   /**
    * Verifies the binary is present and executable
    * Returns the binary path if found or downloads it
    */
   async verifyBinary(): Promise<string> {
     // If path is already set and valid, return it
-    if (this.path && await this.isBinaryExecutable(this.path)) {
+    if (this.path && (await this.isBinaryExecutable(this.path))) {
       return this.path
     }
 
@@ -33,7 +33,7 @@ class Cuimp {
 
       // Parse descriptor to get binary info
       this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
-      
+
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after parsing descriptor')
       }
@@ -52,7 +52,6 @@ class Cuimp {
       }
 
       return this.path
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       throw new Error(`Failed to verify binary: ${errorMessage}`)
@@ -78,15 +77,15 @@ class Cuimp {
       // On Unix-like systems, check if it's executable
       if (process.platform !== 'win32') {
         const mode = stats.mode
-        const isExecutable = (mode & fs.constants.S_IXUSR) !== 0 ||
-                           (mode & fs.constants.S_IXGRP) !== 0 ||
-                           (mode & fs.constants.S_IXOTH) !== 0
+        const isExecutable =
+          (mode & fs.constants.S_IXUSR) !== 0 ||
+          (mode & fs.constants.S_IXGRP) !== 0 ||
+          (mode & fs.constants.S_IXOTH) !== 0
         return isExecutable
       }
 
       // On Windows, just check if it's a file
       return true
-
     } catch (error) {
       this.logger.warn(`Error checking binary executable status: ${error}`)
       return false
@@ -100,7 +99,7 @@ class Cuimp {
     try {
       // Ensure binary is verified first
       const binaryPath = await this.verifyBinary()
-      
+
       // Validate inputs
       if (!url || typeof url !== 'string') {
         throw new Error('URL must be a non-empty string')
@@ -115,10 +114,9 @@ class Cuimp {
 
       // Build the command preview
       const command = `${binaryPath} -X ${upperMethod} "${url}"`
-      
+
       this.logger.info(`Command preview: ${command}`)
       return command
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       throw new Error(`Failed to build command preview: ${errorMessage}`)
@@ -163,8 +161,10 @@ class Cuimp {
     this.path = path
     this.binaryInfo = undefined
   }
-   /** Convenience to ensure binary and return verified path */
-   async ensurePath(): Promise<string> { return this.verifyBinary() }
+  /** Convenience to ensure binary and return verified path */
+  async ensurePath(): Promise<string> {
+    return this.verifyBinary()
+  }
 
   /**
    * Downloads the binary without verifying it
@@ -179,7 +179,7 @@ class Cuimp {
 
       // Parse descriptor to get binary info and download
       this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
-      
+
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after processing')
       }
@@ -192,7 +192,6 @@ class Cuimp {
       }
 
       return this.binaryInfo
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       throw new Error(`Failed to download binary: ${errorMessage}`)
@@ -235,5 +234,5 @@ export default {
   request: async <T = any>(config: any) => {
     const { request } = await import('./index')
     return request<T>(config)
-  }
+  },
 }

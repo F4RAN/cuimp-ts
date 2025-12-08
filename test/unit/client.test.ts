@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { CuimpHttp } from '../../src/client'
 import { Cuimp } from '../../src/cuimp'
-import { CuimpRequestConfig, CuimpResponse } from '../../src/types/cuimpTypes'
+import { CuimpRequestConfig } from '../../src/types/cuimpTypes'
 import { CurlError, CurlExitCode } from '../../src/types/curlErrors'
 
 // Mock the runner module
 vi.mock('../../src/runner', () => ({
-  runBinary: vi.fn()
+  runBinary: vi.fn(),
 }))
 
 describe('CuimpHttp', () => {
@@ -17,10 +17,10 @@ describe('CuimpHttp', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     mockCuimp = {
-      ensurePath: vi.fn().mockResolvedValue('/usr/bin/curl-impersonate')
+      ensurePath: vi.fn().mockResolvedValue('/usr/bin/curl-impersonate'),
     } as any
     client = new CuimpHttp(mockCuimp)
-    
+
     // Get mocked functions
     const runnerModule = await import('../../src/runner')
     mockRunBinary = vi.mocked(runnerModule.runBinary)
@@ -42,14 +42,16 @@ describe('CuimpHttp', () => {
     it('should make GET request successfully', async () => {
       const mockResponse = {
         exitCode: 0,
-        stdout: Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"message":"success"}'),
-        stderr: Buffer.from('')
+        stdout: Buffer.from(
+          'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"message":"success"}'
+        ),
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        method: 'GET'
+        method: 'GET',
       }
 
       const response = await client.request(config)
@@ -60,7 +62,13 @@ describe('CuimpHttp', () => {
       expect(response.headers['Content-Type']).toBe('application/json')
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
-        expect.arrayContaining(['--location', '--max-redirs', '10', '-i', 'https://api.example.com/test']),
+        expect.arrayContaining([
+          '--location',
+          '--max-redirs',
+          '10',
+          '-i',
+          'https://api.example.com/test',
+        ]),
         expect.any(Object)
       )
     })
@@ -68,15 +76,17 @@ describe('CuimpHttp', () => {
     it('should make POST request with JSON data', async () => {
       const mockResponse = {
         exitCode: 0,
-        stdout: Buffer.from('HTTP/1.1 201 Created\r\nContent-Type: application/json\r\n\r\n{"id":123}'),
-        stderr: Buffer.from('')
+        stdout: Buffer.from(
+          'HTTP/1.1 201 Created\r\nContent-Type: application/json\r\n\r\n{"id":123}'
+        ),
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/users',
         method: 'POST',
-        data: { name: 'John Doe', email: 'john@example.com' }
+        data: { name: 'John Doe', email: 'john@example.com' },
       }
 
       const response = await client.request(config)
@@ -87,9 +97,12 @@ describe('CuimpHttp', () => {
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([
-          '-X', 'POST',
-          '--data-binary', '{"name":"John Doe","email":"john@example.com"}',
-          '-H', 'Content-Type: application/json'
+          '-X',
+          'POST',
+          '--data-binary',
+          '{"name":"John Doe","email":"john@example.com"}',
+          '-H',
+          'Content-Type: application/json',
         ]),
         expect.any(Object)
       )
@@ -99,13 +112,13 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/search',
-        params: { q: 'test query', page: 1 }
+        params: { q: 'test query', page: 1 },
       }
 
       await client.request(config)
@@ -121,16 +134,16 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
         headers: {
-          'Authorization': 'Bearer token123',
-          'X-Custom-Header': 'custom-value'
-        }
+          Authorization: 'Bearer token123',
+          'X-Custom-Header': 'custom-value',
+        },
       }
 
       await client.request(config)
@@ -138,8 +151,10 @@ describe('CuimpHttp', () => {
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([
-          '-H', 'Authorization: Bearer token123',
-          '-H', 'X-Custom-Header: custom-value'
+          '-H',
+          'Authorization: Bearer token123',
+          '-H',
+          'X-Custom-Header: custom-value',
         ]),
         expect.any(Object)
       )
@@ -150,12 +165,12 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
-        url: '/users/123'
+        url: '/users/123',
       }
 
       await clientWithBaseURL.request(config)
@@ -171,35 +186,34 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        timeout: 5000
+        timeout: 5000,
       }
 
       await client.request(config)
 
-      expect(mockRunBinary).toHaveBeenCalledWith(
-        '/usr/bin/curl-impersonate',
-        expect.any(Array),
-        { timeout: 5000, signal: undefined }
-      )
+      expect(mockRunBinary).toHaveBeenCalledWith('/usr/bin/curl-impersonate', expect.any(Array), {
+        timeout: 5000,
+        signal: undefined,
+      })
     })
 
     it('should handle proxy', async () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        proxy: 'http://proxy.example.com:8080'
+        proxy: 'http://proxy.example.com:8080',
       }
 
       await client.request(config)
@@ -215,13 +229,13 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        proxy: 'proxy.example.com:8080'
+        proxy: 'proxy.example.com:8080',
       }
 
       await client.request(config)
@@ -237,13 +251,13 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        proxy: 'user:pass@proxy.example.com:8080'
+        proxy: 'user:pass@proxy.example.com:8080',
       }
 
       await client.request(config)
@@ -259,13 +273,13 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        proxy: 'socks5://proxy.example.com:1080'
+        proxy: 'socks5://proxy.example.com:1080',
       }
 
       await client.request(config)
@@ -281,13 +295,13 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        insecureTLS: true
+        insecureTLS: true,
       }
 
       await client.request(config)
@@ -303,13 +317,13 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
-        maxRedirects: 5
+        maxRedirects: 5,
       }
 
       await client.request(config)
@@ -325,7 +339,7 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
@@ -336,7 +350,7 @@ describe('CuimpHttp', () => {
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/login',
         method: 'POST',
-        data: formData
+        data: formData,
       }
 
       await client.request(config)
@@ -344,8 +358,10 @@ describe('CuimpHttp', () => {
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([
-          '--data', 'username=john&password=secret',
-          '-H', 'Content-Type: application/x-www-form-urlencoded'
+          '--data',
+          'username=john&password=secret',
+          '-H',
+          'Content-Type: application/x-www-form-urlencoded',
         ]),
         expect.any(Object)
       )
@@ -355,14 +371,14 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
         method: 'POST',
-        data: 'raw string data'
+        data: 'raw string data',
       }
 
       await client.request(config)
@@ -378,7 +394,7 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
@@ -386,7 +402,7 @@ describe('CuimpHttp', () => {
       const config: CuimpRequestConfig = {
         url: 'https://api.example.com/test',
         method: 'POST',
-        data: bufferData
+        data: bufferData,
       }
 
       await client.request(config)
@@ -400,7 +416,7 @@ describe('CuimpHttp', () => {
 
     it('should throw error for missing URL', async () => {
       const config: CuimpRequestConfig = {
-        method: 'GET'
+        method: 'GET',
       }
 
       await expect(client.request(config)).rejects.toThrow('URL is required')
@@ -411,15 +427,15 @@ describe('CuimpHttp', () => {
         exitCode: 0,
         stdout: Buffer.from(
           'HTTP/1.1 302 Found\r\nLocation: /redirect1\r\n\r\n' +
-          'HTTP/1.1 301 Moved\r\nLocation: /redirect2\r\n\r\n' +
-          'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"final":"response"}'
+            'HTTP/1.1 301 Moved\r\nLocation: /redirect2\r\n\r\n' +
+            'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"final":"response"}'
         ),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
-        url: 'https://api.example.com/test'
+        url: 'https://api.example.com/test',
       }
 
       const response = await client.request(config)
@@ -433,12 +449,12 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello World'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
-        url: 'https://api.example.com/test'
+        url: 'https://api.example.com/test',
       }
 
       const response = await client.request(config)
@@ -452,7 +468,7 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: 0,
         stdout: Buffer.from('HTTP/1.1 200 OK\r\n\r\n{}'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
     })
@@ -526,12 +542,12 @@ describe('CuimpHttp', () => {
       const mockResponse = {
         exitCode: CurlExitCode.COULDNT_RESOLVE_HOST,
         stdout: Buffer.from(''),
-        stderr: Buffer.from('curl: (6) Could not resolve host')
+        stderr: Buffer.from('curl: (6) Could not resolve host'),
       }
       mockRunBinary.mockResolvedValue(mockResponse)
 
       const config: CuimpRequestConfig = {
-        url: 'https://invalid.example.com'
+        url: 'https://invalid.example.com',
       }
 
       try {

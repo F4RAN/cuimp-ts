@@ -1,65 +1,75 @@
-import { Cuimp } from './cuimp';
-import { runBinary } from './runner';
-import type { CuimpInstance, CuimpRequestConfig, CuimpResponse, Method, CookieJarOption } from './types/cuimpTypes';
-import { CurlError, CurlExitCode } from './types/curlErrors';
-import { CookieJar } from './helpers/cookieJar';
-import { parseHttpResponse } from './helpers/parser';
+import { Cuimp } from './cuimp'
+import { runBinary } from './runner'
+import type {
+  CuimpInstance,
+  CuimpRequestConfig,
+  CuimpResponse,
+  Method,
+  CookieJarOption,
+} from './types/cuimpTypes'
+import { CurlError, CurlExitCode } from './types/curlErrors'
+import { CookieJar } from './helpers/cookieJar'
+import { parseHttpResponse } from './helpers/parser'
 
 function joinURL(base?: string, path?: string): string | undefined {
-  if (!path) return base;
-  if (!base) return path;
-  return new URL(path, base).toString();
+  if (!path) return base
+  if (!base) return path
+  return new URL(path, base).toString()
 }
 
 function encodeParams(params?: Record<string, any>): string {
-  if (!params) return '';
-  const usp = new URLSearchParams();
+  if (!params) return ''
+  const usp = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
-    if (v === undefined || v === null) continue;
-    usp.append(k, String(v));
+    if (v === undefined || v === null) continue
+    usp.append(k, String(v))
   }
-  const qs = usp.toString();
-  return qs ? `?${qs}` : '';
+  const qs = usp.toString()
+  return qs ? `?${qs}` : ''
 }
 
-function normalizeHeaders(h?: Record<string, any>): Record<string,string> {
-  const out: Record<string,string> = {};
-  if (!h) return out;
+function normalizeHeaders(h?: Record<string, any>): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!h) return out
   for (const [k, v] of Object.entries(h)) {
-    if (v === undefined || v === null) continue;
-    out[k] = String(v);
+    if (v === undefined || v === null) continue
+    out[k] = String(v)
   }
-  return out;
+  return out
 }
 
 function tryParseBody(buf: Buffer, headers: Record<string, string>) {
-  const ct = Object.keys(headers).find(h => h.toLowerCase() === 'content-type');
-  const val = ct ? headers[ct] : '';
+  const ct = Object.keys(headers).find(h => h.toLowerCase() === 'content-type')
+  const val = ct ? headers[ct] : ''
   if (val && val.toLowerCase().includes('application/json')) {
-    try { return JSON.parse(buf.toString('utf8')); } catch { /* fallthrough */ }
+    try {
+      return JSON.parse(buf.toString('utf8'))
+    } catch {
+      /* fallthrough */
+    }
   }
-  return buf.toString('utf8');
+  return buf.toString('utf8')
 }
 
 function normalizeProxyUrl(proxy: string): string {
   // If proxy already has a scheme, return as-is
   if (proxy.includes('://')) {
-    return proxy;
+    return proxy
   }
-  
+
   // Handle different proxy formats
   if (proxy.startsWith('socks4://') || proxy.startsWith('socks5://')) {
-    return proxy;
+    return proxy
   }
-  
+
   // Default to HTTP proxy if no scheme specified
   // Handle cases like "proxy.example.com:8080" or "user:pass@proxy.example.com:8080"
   if (proxy.includes('@')) {
     // Has authentication: user:pass@host:port
-    return `http://${proxy}`;
+    return `http://${proxy}`
   } else {
     // No authentication: host:port
-    return `http://${proxy}`;
+    return `http://${proxy}`
   }
 }
 
@@ -68,32 +78,32 @@ function getProxyFromEnvironment(): string | undefined {
   const proxyVars = [
     'HTTP_PROXY',
     'http_proxy',
-    'HTTPS_PROXY', 
+    'HTTPS_PROXY',
     'https_proxy',
     'ALL_PROXY',
-    'all_proxy'
-  ];
-  
+    'all_proxy',
+  ]
+
   for (const varName of proxyVars) {
-    const value = process.env[varName];
+    const value = process.env[varName]
     if (value) {
-      return value;
+      return value
     }
   }
-  
-  return undefined;
+
+  return undefined
 }
 
 export class CuimpHttp implements CuimpInstance {
-  private cookieJar: CookieJar | null = null;
+  private cookieJar: CookieJar | null = null
 
   constructor(
-    private core: Cuimp, 
+    private core: Cuimp,
     private defaults: Partial<CuimpRequestConfig> = {},
     cookieJarOption?: CookieJarOption
   ) {
     if (cookieJarOption) {
-      this.cookieJar = new CookieJar(cookieJarOption);
+      this.cookieJar = new CookieJar(cookieJarOption)
     }
   }
 
@@ -101,7 +111,7 @@ export class CuimpHttp implements CuimpInstance {
    * Get the cookie jar instance (if enabled)
    */
   getCookieJar(): CookieJar | null {
-    return this.cookieJar;
+    return this.cookieJar
   }
 
   /**
@@ -109,7 +119,7 @@ export class CuimpHttp implements CuimpInstance {
    */
   clearCookies(): void {
     if (this.cookieJar) {
-      this.cookieJar.clear();
+      this.cookieJar.clear()
     }
   }
 
@@ -118,117 +128,120 @@ export class CuimpHttp implements CuimpInstance {
    */
   destroy(): void {
     if (this.cookieJar) {
-      this.cookieJar.destroy();
-      this.cookieJar = null;
+      this.cookieJar.destroy()
+      this.cookieJar = null
     }
   }
 
   async request<T = any>(config: CuimpRequestConfig): Promise<CuimpResponse<T>> {
-    const method: Method = (config.method || 'GET').toUpperCase() as Method;
+    const method: Method = (config.method || 'GET').toUpperCase() as Method
 
-    const urlBase = config.baseURL ?? this.defaults.baseURL;
-    const rawUrl = config.url!;
-    const qs = encodeParams(config.params ?? this.defaults.params);
-    const url = joinURL(urlBase, rawUrl) + qs;
+    const urlBase = config.baseURL ?? this.defaults.baseURL
+    const rawUrl = config.url
+    if (!rawUrl) throw new Error('URL is required')
 
-    if (!url) throw new Error('URL is required');
+    const qs = encodeParams(config.params ?? this.defaults.params)
+    const url = joinURL(urlBase, rawUrl) + qs
 
-    const bin = await this.core.ensurePath();
+    if (!url) throw new Error('URL is required')
+
+    const bin = await this.core.ensurePath()
 
     const headers = {
       ...(this.defaults.headers ?? {}),
       ...(config.headers ?? {}),
-    };
-    const normHeaders = normalizeHeaders(headers);
+    }
+    const normHeaders = normalizeHeaders(headers)
 
     // Build args for curl-impersonate binary
-    const args: string[] = [];
+    const args: string[] = []
 
     // Method
     if (method !== 'GET') {
-      args.push('-X', method);
+      args.push('-X', method)
     }
 
     // Redirects
-    const maxRedirects = config.maxRedirects ?? this.defaults.maxRedirects ?? 10;
-    if (maxRedirects > 0) args.push('--location', '--max-redirs', String(maxRedirects));
+    const maxRedirects = config.maxRedirects ?? this.defaults.maxRedirects ?? 10
+    if (maxRedirects > 0) args.push('--location', '--max-redirs', String(maxRedirects))
 
     // Proxy
-    const proxy = config.proxy ?? this.defaults.proxy ?? getProxyFromEnvironment();
+    const proxy = config.proxy ?? this.defaults.proxy ?? getProxyFromEnvironment()
     if (proxy) {
       // Handle different proxy types and authentication
-      const normalizedProxy = normalizeProxyUrl(proxy);
-      args.push('--proxy', normalizedProxy);
+      const normalizedProxy = normalizeProxyUrl(proxy)
+      args.push('--proxy', normalizedProxy)
     }
 
     // Insecure TLS
-    const insecure = config.insecureTLS ?? this.defaults.insecureTLS;
-    if (insecure) args.push('-k');
+    const insecure = config.insecureTLS ?? this.defaults.insecureTLS
+    if (insecure) args.push('-k')
 
     // Headers
     for (const [k, v] of Object.entries(normHeaders)) {
-      args.push('-H', `${k}: ${v}`);
+      args.push('-H', `${k}: ${v}`)
     }
 
     // Body
-    let hasBody = false;
     if (config.data !== undefined && config.data !== null) {
-      hasBody = true;
       if (Buffer.isBuffer(config.data)) {
         // We'll pass via --data-binary @- and write to stdin (but we spawned with no stdin piping).
         // Simpler: stringify here for common types. For binary, recommend user pass string/base64.
-        args.push('--data-binary', config.data.toString('utf8'));
+        args.push('--data-binary', config.data.toString('utf8'))
       } else if (config.data instanceof URLSearchParams) {
-        args.push('--data', config.data.toString());
+        args.push('--data', config.data.toString())
         if (!Object.keys(normHeaders).some(h => h.toLowerCase() === 'content-type')) {
-          args.push('-H', 'Content-Type: application/x-www-form-urlencoded');
+          args.push('-H', 'Content-Type: application/x-www-form-urlencoded')
         }
       } else if (typeof config.data === 'string') {
-        args.push('--data-binary', config.data);
+        args.push('--data-binary', config.data)
       } else {
         // JSON
-        const body = JSON.stringify(config.data);
-        args.push('--data-binary', body);
+        const body = JSON.stringify(config.data)
+        args.push('--data-binary', body)
         if (!Object.keys(normHeaders).some(h => h.toLowerCase() === 'content-type')) {
-          args.push('-H', 'Content-Type: application/json');
+          args.push('-H', 'Content-Type: application/json')
         }
       }
     }
 
     // Cookie jar arguments (if enabled)
     if (this.cookieJar) {
-      args.push(...this.cookieJar.getCurlArgs());
+      args.push(...this.cookieJar.getCurlArgs())
     }
 
     // Extra curl arguments (from config or defaults)
-    const extraArgs = config.extraCurlArgs ?? this.defaults.extraCurlArgs;
+    const extraArgs = config.extraCurlArgs ?? this.defaults.extraCurlArgs
     if (extraArgs && extraArgs.length > 0) {
-      args.push(...extraArgs);
+      args.push(...extraArgs)
     }
-
 
     // Add --fail-with-body by default to get response body on 4xx/5xx
     // Only add if not already present and --fail is not present
     if (!args.includes('--fail-with-body') && !args.includes('--fail')) {
-      args.push('--fail-with-body');
+      args.push('--fail-with-body')
     }
 
     // Always capture headers: use -i to include headers in output, then split.
-    args.push('-i');
+    args.push('-i')
 
     // URL at the end
-    args.push(url);
+    args.push(url)
 
     // Preview (for debugging/response.request.command)
-    const command = [bin, ...args.map(a => (/\s/.test(a) ? JSON.stringify(a) : a))].join(' ');
+    const command = [bin, ...args.map(a => (/\s/.test(a) ? JSON.stringify(a) : a))].join(' ')
 
     // Execute
-    const result = await runBinary(bin, args, { timeout: config.timeout ?? this.defaults.timeout, signal: config.signal });
+    const result = await runBinary(bin, args, {
+      timeout: config.timeout ?? this.defaults.timeout,
+      signal: config.signal,
+    })
 
     // Check exit code - but for HTTP_RETURNED_ERROR (22), we may still have a valid response body
-    const stdoutBuf = result.stdout;
-    const hasHttpResponse = stdoutBuf.length > 0 && stdoutBuf.subarray(0, 5).equals(Buffer.from('HTTP/'));
-    
+    const stdoutBuf = result.stdout
+    const hasHttpResponse =
+      stdoutBuf.length > 0 && stdoutBuf.subarray(0, 5).equals(Buffer.from('HTTP/'))
+
     // Check exit code
     if (result.exitCode !== null && result.exitCode !== CurlExitCode.OK) {
       // For HTTP_RETURNED_ERROR (22), if we have a valid HTTP response in stdout,
@@ -237,14 +250,14 @@ export class CuimpHttp implements CuimpInstance {
         // Continue to parse the response below - don't throw
       } else {
         // For other errors or when there's no valid HTTP response, throw
-        const stderr = result.stderr.toString('utf8');
-        throw new CurlError(result.exitCode as CurlExitCode, stderr);
+        const stderr = result.stderr.toString('utf8')
+        throw new CurlError(result.exitCode as CurlExitCode, stderr)
       }
     }
 
     // Parse HTTP response
-    const { status, statusText, headers: respHeaders, body: rawBody } = parseHttpResponse(stdoutBuf);
-    const parsed = tryParseBody(rawBody, respHeaders) as T;
+    const { status, statusText, headers: respHeaders, body: rawBody } = parseHttpResponse(stdoutBuf)
+    const parsed = tryParseBody(rawBody, respHeaders) as T
 
     return {
       status,
@@ -258,29 +271,41 @@ export class CuimpHttp implements CuimpInstance {
         headers: normHeaders,
         command,
       },
-    };
+    }
   }
 
   // Shorthand methods
-  get<T = any>(url: string, config: Omit<CuimpRequestConfig,'url'|'method'|'data'> = {}) {
-    return this.request<T>({ ...config, url, method: 'GET' });
+  get<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+    return this.request<T>({ ...config, url, method: 'GET' })
   }
-  delete<T = any>(url: string, config: Omit<CuimpRequestConfig,'url'|'method'|'data'> = {}) {
-    return this.request<T>({ ...config, url, method: 'DELETE' });
+  delete<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+    return this.request<T>({ ...config, url, method: 'DELETE' })
   }
-  head<T = any>(url: string, config: Omit<CuimpRequestConfig,'url'|'method'|'data'> = {}) {
-    return this.request<T>({ ...config, url, method: 'HEAD' });
+  head<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+    return this.request<T>({ ...config, url, method: 'HEAD' })
   }
-  options<T = any>(url: string, config: Omit<CuimpRequestConfig,'url'|'method'|'data'> = {}) {
-    return this.request<T>({ ...config, url, method: 'OPTIONS' });
+  options<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+    return this.request<T>({ ...config, url, method: 'OPTIONS' })
   }
-  post<T = any>(url: string, data?: CuimpRequestConfig['data'], config: Omit<CuimpRequestConfig,'url'|'method'|'data'> = {}) {
-    return this.request<T>({ ...config, url, data, method: 'POST' });
+  post<T = any>(
+    url: string,
+    data?: CuimpRequestConfig['data'],
+    config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
+  ) {
+    return this.request<T>({ ...config, url, data, method: 'POST' })
   }
-  put<T = any>(url: string, data?: CuimpRequestConfig['data'], config: Omit<CuimpRequestConfig,'url'|'method'|'data'> = {}) {
-    return this.request<T>({ ...config, url, data, method: 'PUT' });
+  put<T = any>(
+    url: string,
+    data?: CuimpRequestConfig['data'],
+    config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
+  ) {
+    return this.request<T>({ ...config, url, data, method: 'PUT' })
   }
-  patch<T = any>(url: string, data?: CuimpRequestConfig['data'], config: Omit<CuimpRequestConfig,'url'|'method'|'data'> = {}) {
-    return this.request<T>({ ...config, url, data, method: 'PATCH' });
+  patch<T = any>(
+    url: string,
+    data?: CuimpRequestConfig['data'],
+    config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
+  ) {
+    return this.request<T>({ ...config, url, data, method: 'PATCH' })
   }
 }

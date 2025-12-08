@@ -4,7 +4,7 @@ import { CuimpDescriptor } from '../../src/types/cuimpTypes'
 
 // Mock the connector module
 vi.mock('../../src/helpers/connector', () => ({
-  getLatestRelease: vi.fn()
+  getLatestRelease: vi.fn(),
 }))
 
 // Mock fs module
@@ -20,9 +20,9 @@ vi.mock('fs', () => ({
     constants: {
       S_IXUSR: 0o100,
       S_IXGRP: 0o010,
-      S_IXOTH: 0o001
-    }
-  }
+      S_IXOTH: 0o001,
+    },
+  },
 }))
 
 // Mock path module
@@ -30,18 +30,18 @@ vi.mock('path', () => ({
   default: {
     join: vi.fn((...args) => args.join('/')),
     resolve: vi.fn((...args) => args.join('/')),
-    dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/') || '.'),
-    basename: vi.fn((p) => p.split('/').pop() || ''),
-    extname: vi.fn((p) => {
+    dirname: vi.fn(p => p.split('/').slice(0, -1).join('/') || '.'),
+    basename: vi.fn(p => p.split('/').pop() || ''),
+    extname: vi.fn(p => {
       const parts = p.split('.')
       return parts.length > 1 ? '.' + parts.pop() : ''
-    })
-  }
+    }),
+  },
 }))
 
 // Mock tar module
 vi.mock('tar', () => ({
-  extract: vi.fn()
+  extract: vi.fn(),
 }))
 
 // Mock fetch
@@ -54,33 +54,33 @@ describe('parseDescriptor', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    
+
     // Get mocked functions
     const connectorModule = await import('../../src/helpers/connector')
     const fsModule = await import('fs')
-    
+
     mockGetLatestRelease = vi.mocked(connectorModule.getLatestRelease)
     mockFs = vi.mocked(fsModule.default)
     mockFetch = vi.mocked(global.fetch)
-    
+
     // Setup default fetch mock
     mockFetch.mockResolvedValue({
       ok: true,
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
     })
-    
+
     // Default: directories don't exist, so readdirSync throws (simulating real behavior)
     mockFs.readdirSync.mockImplementation(() => {
       throw new Error('ENOENT: no such file or directory')
     })
-    
+
     // Default: files don't exist
     mockFs.existsSync.mockReturnValue(false)
-    
+
     // Default: statSync returns file stats
     mockFs.statSync.mockReturnValue({
       isFile: () => true,
-      mode: 0o755
+      mode: 0o755,
     } as any)
   })
 
@@ -92,7 +92,10 @@ describe('parseDescriptor', () => {
     // Mock: binary exists after extraction, binaries directory exists
     mockFs.existsSync.mockImplementation((path: string) => {
       // Return true for binaries directory and binary path check after extraction
-      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+      if (
+        typeof path === 'string' &&
+        (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))
+      ) {
         return true
       }
       return false
@@ -116,7 +119,11 @@ describe('parseDescriptor', () => {
         return true
       }
       // Return true for binaries directory to allow creation
-      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
+      if (
+        typeof path === 'string' &&
+        path.includes('.cuimp/binaries') &&
+        !path.includes('curl-impersonate')
+      ) {
         return true
       }
       return false
@@ -134,16 +141,16 @@ describe('parseDescriptor', () => {
       downloadStarted = true
       return Promise.resolve({
         ok: true,
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
       } as Response)
     })
 
-    const descriptor: CuimpDescriptor = { 
-      browser: 'chrome', 
-      platform: 'linux', 
-      architecture: 'x64' 
+    const descriptor: CuimpDescriptor = {
+      browser: 'chrome',
+      platform: 'linux',
+      architecture: 'x64',
     }
-    
+
     const result = await parseDescriptor(descriptor)
 
     expect(mockGetLatestRelease).toHaveBeenCalled()
@@ -158,7 +165,11 @@ describe('parseDescriptor', () => {
       if (downloadStarted && typeof path === 'string' && path.includes('curl-impersonate')) {
         return true
       }
-      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
+      if (
+        typeof path === 'string' &&
+        path.includes('.cuimp/binaries') &&
+        !path.includes('curl-impersonate')
+      ) {
         return true
       }
       return false
@@ -174,10 +185,10 @@ describe('parseDescriptor', () => {
       downloadStarted = true
       return Promise.resolve({
         ok: true,
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
       } as Response)
     })
-    
+
     const descriptor: CuimpDescriptor = {}
     const result = await parseDescriptor(descriptor)
 
@@ -192,7 +203,11 @@ describe('parseDescriptor', () => {
       if (downloadStarted && typeof path === 'string' && path.includes('curl-impersonate')) {
         return true
       }
-      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
+      if (
+        typeof path === 'string' &&
+        path.includes('.cuimp/binaries') &&
+        !path.includes('curl-impersonate')
+      ) {
         return true
       }
       return false
@@ -208,7 +223,7 @@ describe('parseDescriptor', () => {
       downloadStarted = true
       return Promise.resolve({
         ok: true,
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
       } as Response)
     })
 
@@ -224,7 +239,7 @@ describe('parseDescriptor', () => {
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
     const descriptor: CuimpDescriptor = { browser: 'unsupported' }
-    
+
     await expect(parseDescriptor(descriptor)).rejects.toThrow()
   })
 
@@ -232,11 +247,11 @@ describe('parseDescriptor', () => {
     mockFs.existsSync.mockReturnValue(false)
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
-    const descriptor: CuimpDescriptor = { 
-      browser: 'chrome', 
-      platform: 'unsupported' 
+    const descriptor: CuimpDescriptor = {
+      browser: 'chrome',
+      platform: 'unsupported',
     }
-    
+
     await expect(parseDescriptor(descriptor)).rejects.toThrow()
   })
 
@@ -244,11 +259,11 @@ describe('parseDescriptor', () => {
     mockFs.existsSync.mockReturnValue(false)
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
-    const descriptor: CuimpDescriptor = { 
-      browser: 'chrome', 
-      architecture: 'unsupported' 
+    const descriptor: CuimpDescriptor = {
+      browser: 'chrome',
+      architecture: 'unsupported',
     }
-    
+
     await expect(parseDescriptor(descriptor)).rejects.toThrow()
   })
 
@@ -257,7 +272,7 @@ describe('parseDescriptor', () => {
     mockGetLatestRelease.mockRejectedValue(new Error('Network error'))
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
-    
+
     await expect(parseDescriptor(descriptor)).rejects.toThrow('Network error')
   })
 
@@ -268,11 +283,11 @@ describe('parseDescriptor', () => {
     mockFetch.mockResolvedValue({
       ok: false,
       status: 404,
-      statusText: 'Not Found'
+      statusText: 'Not Found',
     })
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
-    
+
     await expect(parseDescriptor(descriptor)).rejects.toThrow()
   })
 
@@ -283,7 +298,11 @@ describe('parseDescriptor', () => {
       if (downloadStarted && typeof path === 'string' && path.includes('curl-impersonate')) {
         return true
       }
-      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
+      if (
+        typeof path === 'string' &&
+        path.includes('.cuimp/binaries') &&
+        !path.includes('curl-impersonate')
+      ) {
         return true
       }
       return false
@@ -299,16 +318,16 @@ describe('parseDescriptor', () => {
       downloadStarted = true
       return Promise.resolve({
         ok: true,
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
       } as Response)
     })
 
-    const descriptor: CuimpDescriptor = { 
-      browser: 'chrome', 
-      platform: 'linux', 
-      architecture: 'x64' 
+    const descriptor: CuimpDescriptor = {
+      browser: 'chrome',
+      platform: 'linux',
+      architecture: 'x64',
     }
-    
+
     const result = await parseDescriptor(descriptor)
 
     expect(result.binaryPath).toBeDefined()

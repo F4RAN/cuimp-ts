@@ -1,32 +1,38 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { 
-  Cuimp, 
-  CuimpHttp, 
-  createCuimpHttp, 
-  request, 
-  get, 
-  post, 
-  put, 
-  patch, 
-  del, 
-  head, 
+import {
+  Cuimp,
+  CuimpHttp,
+  createCuimpHttp,
+  request,
+  get,
+  post,
+  put,
+  patch,
+  del,
+  head,
   options,
-  runBinary 
+  // runBinary - unused but kept for potential future use
+  CurlError,
+  CurlExitCode,
 } from '../../src/index'
 
 // Mock the runner module
 vi.mock('../../src/runner', () => ({
-  runBinary: vi.fn()
+  runBinary: vi.fn(),
 }))
 
-// Mock the parser module
-vi.mock('../../src/helpers/parser', () => ({
-  parseDescriptor: vi.fn()
-}))
+// Mock the parser module - use importOriginal to get real parseHttpResponse and getStatusText
+vi.mock('../../src/helpers/parser', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../src/helpers/parser')>()
+  return {
+    ...actual,
+    parseDescriptor: vi.fn(),
+  }
+})
 
 // Mock the validation module
 vi.mock('../../src/validations/descriptorValidation', () => ({
-  validateDescriptor: vi.fn()
+  validateDescriptor: vi.fn(),
 }))
 
 // Mock fs module
@@ -37,9 +43,9 @@ vi.mock('fs', () => ({
     constants: {
       S_IXUSR: 0o100,
       S_IXGRP: 0o010,
-      S_IXOTH: 0o001
-    }
-  }
+      S_IXOTH: 0o001,
+    },
+  },
 }))
 
 describe('Integration Tests - Main API', () => {
@@ -50,34 +56,36 @@ describe('Integration Tests - Main API', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    
+
     // Get mocked functions
     const runnerModule = await import('../../src/runner')
     const parserModule = await import('../../src/helpers/parser')
     const validationModule = await import('../../src/validations/descriptorValidation')
     const fsModule = await import('fs')
-    
+
     mockRunBinary = vi.mocked(runnerModule.runBinary)
     mockParseDescriptor = vi.mocked(parserModule.parseDescriptor)
     mockValidateDescriptor = vi.mocked(validationModule.validateDescriptor)
     mockFs = vi.mocked(fsModule.default)
-    
+
     // Setup default mocks
     mockParseDescriptor.mockResolvedValue({
       binaryPath: '/usr/bin/curl-impersonate',
-      isDownloaded: false
+      isDownloaded: false,
     })
-    
+
     mockFs.existsSync.mockReturnValue(true)
     mockFs.statSync.mockReturnValue({
       isFile: () => true,
-      mode: 0o755
+      mode: 0o755,
     } as any)
-    
+
     mockRunBinary.mockResolvedValue({
       exitCode: 0,
-      stdout: Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"message":"success"}'),
-      stderr: Buffer.from('')
+      stdout: Buffer.from(
+        'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"message":"success"}'
+      ),
+      stderr: Buffer.from(''),
     })
   })
 
@@ -89,25 +97,26 @@ describe('Integration Tests - Main API', () => {
     it('should create instance and verify binary', async () => {
       const cuimp = new Cuimp()
       const binaryPath = await cuimp.verifyBinary()
-      
+
       expect(binaryPath).toBe('/usr/bin/curl-impersonate')
-      expect(mockValidateDescriptor).toHaveBeenCalled()
+      // validateDescriptor is only called when descriptor has keys
+      // parseDescriptor should be called
       expect(mockParseDescriptor).toHaveBeenCalled()
     })
 
     it('should build command preview', async () => {
       const cuimp = new Cuimp()
       const command = await cuimp.buildCommandPreview('https://example.com', 'GET')
-      
+
       expect(command).toBe('/usr/bin/curl-impersonate -X GET "https://example.com"')
     })
 
     it('should handle descriptor updates', async () => {
       const cuimp = new Cuimp()
-      
+
       cuimp.setDescriptor({ browser: 'chrome', version: '123' })
       expect(cuimp.getDescriptor()).toEqual({ browser: 'chrome', version: '123' })
-      
+
       cuimp.setBinaryPath('/custom/path')
       expect(cuimp.getBinaryPath()).toBe('/custom/path')
     })
@@ -117,9 +126,9 @@ describe('Integration Tests - Main API', () => {
     it('should make HTTP requests', async () => {
       const cuimp = new Cuimp()
       const client = new CuimpHttp(cuimp)
-      
+
       const response = await client.get('https://api.example.com/test')
-      
+
       expect(response.status).toBe(200)
       expect(response.data).toEqual({ message: 'success' })
       expect(mockRunBinary).toHaveBeenCalled()
@@ -128,7 +137,7 @@ describe('Integration Tests - Main API', () => {
     it('should handle different HTTP methods', async () => {
       const cuimp = new Cuimp()
       const client = new CuimpHttp(cuimp)
-      
+
       // Test all HTTP methods
       await client.get('https://api.example.com/test')
       await client.post('https://api.example.com/test', { data: 'test' })
@@ -137,7 +146,7 @@ describe('Integration Tests - Main API', () => {
       await client.delete('https://api.example.com/test')
       await client.head('https://api.example.com/test')
       await client.options('https://api.example.com/test')
-      
+
       expect(mockRunBinary).toHaveBeenCalledTimes(7)
     })
 
@@ -145,20 +154,21 @@ describe('Integration Tests - Main API', () => {
       const cuimp = new Cuimp()
       const client = new CuimpHttp(cuimp, {
         baseURL: 'https://api.example.com',
-        headers: { 'Authorization': 'Bearer token' }
+        headers: { Authorization: 'Bearer token' },
       })
-      
+
       const response = await client.get('/users/123', {
         params: { include: 'profile' },
-        timeout: 5000
+        timeout: 5000,
       })
-      
+
       expect(response.status).toBe(200)
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([
           'https://api.example.com/users/123?include=profile',
-          '-H', 'Authorization: Bearer token'
+          '-H',
+          'Authorization: Bearer token',
         ]),
         { timeout: 5000, signal: undefined }
       )
@@ -168,11 +178,11 @@ describe('Integration Tests - Main API', () => {
   describe('Factory function integration', () => {
     it('should create HTTP client with options', async () => {
       const client = createCuimpHttp({
-        descriptor: { browser: 'chrome' }
+        descriptor: { browser: 'chrome' },
       })
-      
+
       const response = await client.get('https://api.example.com/test')
-      
+
       expect(response.status).toBe(200)
       expect(mockValidateDescriptor).toHaveBeenCalledWith({ browser: 'chrome' })
     })
@@ -182,9 +192,9 @@ describe('Integration Tests - Main API', () => {
     it('should work with request function', async () => {
       const response = await request({
         url: 'https://api.example.com/test',
-        method: 'GET'
+        method: 'GET',
       })
-      
+
       expect(response.status).toBe(200)
       expect(response.data).toEqual({ message: 'success' })
     })
@@ -198,23 +208,20 @@ describe('Integration Tests - Main API', () => {
       await del('https://api.example.com/test')
       await head('https://api.example.com/test')
       await options('https://api.example.com/test')
-      
+
       expect(mockRunBinary).toHaveBeenCalledTimes(7)
     })
 
     it('should handle configuration in convenience functions', async () => {
       const response = await get('https://api.example.com/test', {
         headers: { 'X-Custom': 'value' },
-        params: { page: 1 }
+        params: { page: 1 },
       })
-      
+
       expect(response.status).toBe(200)
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
-        expect.arrayContaining([
-          'https://api.example.com/test?page=1',
-          '-H', 'X-Custom: value'
-        ]),
+        expect.arrayContaining(['https://api.example.com/test?page=1', '-H', 'X-Custom: value']),
         expect.any(Object)
       )
     })
@@ -223,25 +230,25 @@ describe('Integration Tests - Main API', () => {
   describe('Error handling integration', () => {
     it('should handle binary verification errors', async () => {
       mockParseDescriptor.mockRejectedValue(new Error('Binary not found'))
-      
+
       const cuimp = new Cuimp()
-      
-      await expect(cuimp.verifyBinary()).rejects.toThrow('Failed to verify binary: Binary not found')
+
+      await expect(cuimp.verifyBinary()).rejects.toThrow(
+        'Failed to verify binary: Binary not found'
+      )
     })
 
     it('should handle HTTP request errors', async () => {
       mockRunBinary.mockResolvedValue({
-        exitCode: 1,
+        exitCode: CurlExitCode.COULDNT_RESOLVE_HOST,
         stdout: Buffer.from(''),
-        stderr: Buffer.from('curl: (6) Could not resolve host')
+        stderr: Buffer.from('curl: (6) Could not resolve host'),
       })
-      
+
       const client = createCuimpHttp()
-      
-      const response = await client.get('https://nonexistent.example.com')
-      
-      // The client should still return a response object, but with error info
-      expect(response).toBeDefined()
+
+      // Network errors should throw CurlError (not HTTP errors with response body)
+      await expect(client.get('https://nonexistent.example.com')).rejects.toThrow(CurlError)
       expect(mockRunBinary).toHaveBeenCalled()
     })
 
@@ -249,13 +256,13 @@ describe('Integration Tests - Main API', () => {
       mockRunBinary.mockResolvedValue({
         exitCode: 0,
         stdout: Buffer.from('Invalid HTTP response format'),
-        stderr: Buffer.from('')
+        stderr: Buffer.from(''),
       })
-      
+
       const client = createCuimpHttp()
-      
+
       await expect(client.get('https://api.example.com/test')).rejects.toThrow(
-        'Unexpected response format'
+        'No HTTP response found'
       )
     })
   })
@@ -267,21 +274,23 @@ describe('Integration Tests - Main API', () => {
         name: string
         email: string
       }
-      
+
       const client = createCuimpHttp()
-      
+
       // This should be type-safe
-      const response = await client.get<User>('https://api.example.com/users/123')
-      
+      const _response = await client.get<User>('https://api.example.com/users/123')
+
       // Mock a proper response
       mockRunBinary.mockResolvedValue({
         exitCode: 0,
-        stdout: Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"id":123,"name":"John","email":"john@example.com"}'),
-        stderr: Buffer.from('')
+        stdout: Buffer.from(
+          'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"id":123,"name":"John","email":"john@example.com"}'
+        ),
+        stderr: Buffer.from(''),
       })
-      
+
       const typedResponse = await client.get<User>('https://api.example.com/users/123')
-      
+
       expect(typedResponse.data).toHaveProperty('id')
       expect(typedResponse.data).toHaveProperty('name')
       expect(typedResponse.data).toHaveProperty('email')
@@ -291,19 +300,21 @@ describe('Integration Tests - Main API', () => {
   describe('Real-world scenarios', () => {
     it('should handle API with authentication', async () => {
       const client = createCuimpHttp()
-      
-      const response = await client.get('https://api.github.com/user', {
+
+      const _response = await client.get('https://api.github.com/user', {
         headers: {
-          'Authorization': 'Bearer github_token',
-          'User-Agent': 'cuimp-test'
-        }
+          Authorization: 'Bearer github_token',
+          'User-Agent': 'cuimp-test',
+        },
       })
-      
+
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([
-          '-H', 'Authorization: Bearer github_token',
-          '-H', 'User-Agent: cuimp-test'
+          '-H',
+          'Authorization: Bearer github_token',
+          '-H',
+          'User-Agent: cuimp-test',
         ]),
         expect.any(Object)
       )
@@ -311,19 +322,21 @@ describe('Integration Tests - Main API', () => {
 
     it('should handle file upload', async () => {
       const client = createCuimpHttp()
-      
+
       const fileData = Buffer.from('file content')
-      const response = await client.post('https://api.example.com/upload', fileData, {
+      const _response = await client.post('https://api.example.com/upload', fileData, {
         headers: {
-          'Content-Type': 'application/octet-stream'
-        }
+          'Content-Type': 'application/octet-stream',
+        },
       })
-      
+
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([
-          '--data-binary', 'file content',
-          '-H', 'Content-Type: application/octet-stream'
+          '--data-binary',
+          'file content',
+          '-H',
+          'Content-Type: application/octet-stream',
         ]),
         expect.any(Object)
       )
@@ -331,18 +344,20 @@ describe('Integration Tests - Main API', () => {
 
     it('should handle form submission', async () => {
       const client = createCuimpHttp()
-      
+
       const formData = new URLSearchParams()
       formData.append('username', 'john')
       formData.append('password', 'secret')
-      
-      const response = await client.post('https://api.example.com/login', formData)
-      
+
+      const _response = await client.post('https://api.example.com/login', formData)
+
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([
-          '--data', 'username=john&password=secret',
-          '-H', 'Content-Type: application/x-www-form-urlencoded'
+          '--data',
+          'username=john&password=secret',
+          '-H',
+          'Content-Type: application/x-www-form-urlencoded',
         ]),
         expect.any(Object)
       )

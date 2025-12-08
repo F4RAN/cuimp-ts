@@ -1,5 +1,5 @@
 export interface RunResult {
-    exitCode: number | null;
-    stdout: Buffer;
-    stderr: Buffer;
-  }
+  exitCode: number | null
+  stdout: Buffer
+  stderr: Buffer
+}
