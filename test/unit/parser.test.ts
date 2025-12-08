@@ -76,6 +76,12 @@ describe('parseDescriptor', () => {
     
     // Default: files don't exist
     mockFs.existsSync.mockReturnValue(false)
+    
+    // Default: statSync returns file stats
+    mockFs.statSync.mockReturnValue({
+      isFile: () => true,
+      mode: 0o755
+    } as any)
   })
 
   afterEach(() => {
@@ -102,15 +108,35 @@ describe('parseDescriptor', () => {
   })
 
   it('should download binary if not found locally', async () => {
-    // Mock: binary exists after extraction, binaries directory exists
+    let downloadStarted = false
+    // Mock: binary doesn't exist initially, but exists after extraction
     mockFs.existsSync.mockImplementation((path: string) => {
-      // Return true for binaries directory and binary path check after extraction
-      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+      // After download starts (when extracting), return true for binary paths
+      if (downloadStarted && typeof path === 'string' && path.includes('curl-impersonate')) {
+        return true
+      }
+      // Return true for binaries directory to allow creation
+      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
         return true
       }
       return false
     })
+    // Mock readdirSync to return files after extraction
+    mockFs.readdirSync.mockImplementation((dir: string) => {
+      if (downloadStarted && typeof dir === 'string' && dir.includes('binaries')) {
+        return ['curl-impersonate'] as any
+      }
+      throw new Error('ENOENT: no such file or directory')
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
+    // Mock fetch to trigger download
+    mockFetch.mockImplementation(() => {
+      downloadStarted = true
+      return Promise.resolve({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+      } as Response)
+    })
 
     const descriptor: CuimpDescriptor = { 
       browser: 'chrome', 
@@ -126,15 +152,31 @@ describe('parseDescriptor', () => {
   })
 
   it('should handle empty descriptor', async () => {
-    // Mock: binary exists after extraction, binaries directory exists
+    let downloadStarted = false
+    // Mock: binary doesn't exist initially, but exists after extraction
     mockFs.existsSync.mockImplementation((path: string) => {
-      // Return true for binaries directory and binary path check after extraction
-      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+      if (downloadStarted && typeof path === 'string' && path.includes('curl-impersonate')) {
+        return true
+      }
+      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
         return true
       }
       return false
     })
+    mockFs.readdirSync.mockImplementation((dir: string) => {
+      if (downloadStarted && typeof dir === 'string' && dir.includes('binaries')) {
+        return ['curl-impersonate'] as any
+      }
+      throw new Error('ENOENT: no such file or directory')
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
+    mockFetch.mockImplementation(() => {
+      downloadStarted = true
+      return Promise.resolve({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+      } as Response)
+    })
     
     const descriptor: CuimpDescriptor = {}
     const result = await parseDescriptor(descriptor)
@@ -144,15 +186,31 @@ describe('parseDescriptor', () => {
   })
 
   it('should handle partial descriptor', async () => {
-    // Mock: binary exists after extraction, binaries directory exists
+    let downloadStarted = false
+    // Mock: binary doesn't exist initially, but exists after extraction
     mockFs.existsSync.mockImplementation((path: string) => {
-      // Return true for binaries directory and binary path check after extraction
-      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+      if (downloadStarted && typeof path === 'string' && path.includes('curl-impersonate')) {
+        return true
+      }
+      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
         return true
       }
       return false
     })
+    mockFs.readdirSync.mockImplementation((dir: string) => {
+      if (downloadStarted && typeof dir === 'string' && dir.includes('binaries')) {
+        return ['curl-impersonate'] as any
+      }
+      throw new Error('ENOENT: no such file or directory')
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
+    mockFetch.mockImplementation(() => {
+      downloadStarted = true
+      return Promise.resolve({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+      } as Response)
+    })
 
     const descriptor: CuimpDescriptor = { browser: 'chrome' }
     const result = await parseDescriptor(descriptor)
@@ -219,15 +277,31 @@ describe('parseDescriptor', () => {
   })
 
   it('should handle multiple assets and select correct one', async () => {
-    // Mock: binary exists after extraction, binaries directory exists
+    let downloadStarted = false
+    // Mock: binary doesn't exist initially, but exists after extraction
     mockFs.existsSync.mockImplementation((path: string) => {
-      // Return true for binaries directory and binary path check after extraction
-      if (typeof path === 'string' && (path.includes('.cuimp/binaries') || path.includes('curl-impersonate'))) {
+      if (downloadStarted && typeof path === 'string' && path.includes('curl-impersonate')) {
+        return true
+      }
+      if (typeof path === 'string' && path.includes('.cuimp/binaries') && !path.includes('curl-impersonate')) {
         return true
       }
       return false
     })
+    mockFs.readdirSync.mockImplementation((dir: string) => {
+      if (downloadStarted && typeof dir === 'string' && dir.includes('binaries')) {
+        return ['curl-impersonate'] as any
+      }
+      throw new Error('ENOENT: no such file or directory')
+    })
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
+    mockFetch.mockImplementation(() => {
+      downloadStarted = true
+      return Promise.resolve({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+      } as Response)
+    })
 
     const descriptor: CuimpDescriptor = { 
       browser: 'chrome', 

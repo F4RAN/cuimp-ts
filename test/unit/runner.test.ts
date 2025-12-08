@@ -70,7 +70,9 @@ describe('runBinary', () => {
     expect(mockSpawn).toHaveBeenCalledWith(
       '/usr/bin/curl-impersonate',
       ['-X', 'GET', 'https://example.com'],
-      { stdio: ['ignore', 'pipe', 'pipe'] }
+      expect.objectContaining({
+        stdio: ['ignore', 'pipe', 'pipe']
+      })
     )
   })
 
@@ -89,9 +91,11 @@ describe('runBinary', () => {
 
   it('should handle timeout', async () => {
     const timeout = 50
+    let closeCallback: Function | undefined
     
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
+        closeCallback = callback
         // Don't call close immediately to trigger timeout
       }
     })
@@ -99,18 +103,27 @@ describe('runBinary', () => {
     mockChildProcess.stdout.on.mockImplementation(() => {})
     mockChildProcess.stderr.on.mockImplementation(() => {})
 
-    await expect(runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { timeout }))
-      .rejects.toThrow(`Request timed out after ${timeout} ms`)
+    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { timeout })
     
+    // Wait for timeout to fire
+    await new Promise(resolve => setTimeout(resolve, timeout + 10))
+    
+    // After timeout kills the process, close event should fire
+    if (closeCallback) {
+      closeCallback(null) // null exit code after kill
+    }
+    
+    await expect(promise).rejects.toThrow(`Request timed out after ${timeout} ms`)
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
-  }, 200)
+  }, 1000)
 
   it('should handle abort signal', async () => {
     const abortController = new AbortController()
+    let closeCallback: Function | undefined
     
     mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'close') {
-        // Don't call close immediately
+        closeCallback = callback
       }
     })
     
@@ -125,20 +138,43 @@ describe('runBinary', () => {
     // Abort the request
     abortController.abort()
     
+    // After abort kills the process, close event should fire
+    await new Promise(resolve => setTimeout(resolve, 10))
+    if (closeCallback) {
+      closeCallback(null) // null exit code after kill
+    }
+    
     await expect(promise).rejects.toThrow()
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
-  }, 200)
+  }, 1000)
 
   it('should handle already aborted signal', async () => {
     const abortController = new AbortController()
     abortController.abort() // Abort before starting
     
-    await expect(runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { 
-      signal: abortController.signal 
-    })).rejects.toThrow()
+    let closeCallback: Function | undefined
+    mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'close') {
+        closeCallback = callback
+      }
+    })
     
+    mockChildProcess.stdout.on.mockImplementation(() => {})
+    mockChildProcess.stderr.on.mockImplementation(() => {})
+    
+    const promise = runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'], { 
+      signal: abortController.signal 
+    })
+    
+    // After abort kills the process, close event should fire
+    await new Promise(resolve => setTimeout(resolve, 10))
+    if (closeCallback) {
+      closeCallback(null) // null exit code after kill
+    }
+    
+    await expect(promise).rejects.toThrow()
     expect(mockChildProcess.kill).toHaveBeenCalledWith('SIGKILL')
-  }, 200)
+  }, 1000)
 
   it('should handle multiple stdout chunks', async () => {
     const chunk1 = Buffer.from('chunk1')

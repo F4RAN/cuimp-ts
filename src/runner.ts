@@ -47,6 +47,7 @@ export function runBinary(
     });
 
     let killedByTimeout = false;
+    let killedByAbort = false;
     let t: NodeJS.Timeout | undefined;
 
     if (opts?.timeout && opts.timeout > 0) {
@@ -61,9 +62,13 @@ export function runBinary(
 
     if (opts?.signal) {
       if (opts.signal.aborted) {
+        killedByAbort = true;
         child.kill('SIGKILL');
       } else {
-        const onAbort = () => child.kill('SIGKILL');
+        const onAbort = () => {
+          killedByAbort = true;
+          child.kill('SIGKILL');
+        };
         opts.signal.addEventListener('abort', onAbort, { once: true });
         child.on('exit', () => opts.signal?.removeEventListener('abort', onAbort));
       }
@@ -81,6 +86,9 @@ export function runBinary(
       if (t) clearTimeout(t);
       if (killedByTimeout) {
         return reject(new Error(`Request timed out after ${opts?.timeout} ms`));
+      }
+      if (killedByAbort) {
+        return reject(new Error('Request aborted'));
       }
       resolve({
         exitCode: code,
