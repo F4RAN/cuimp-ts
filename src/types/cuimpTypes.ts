@@ -28,7 +28,7 @@ export interface CuimpRequestConfig {
   baseURL?: string
   headers?: Record<string, string | number | boolean>
   params?: Record<string, string | number | boolean | undefined>
-  data?: string | Buffer | Record<string, unknown> | URLSearchParams
+  data?: string | Buffer | JSONValue | URLSearchParams
   timeout?: number
   maxRedirects?: number
   proxy?: string
@@ -37,7 +37,7 @@ export interface CuimpRequestConfig {
   extraCurlArgs?: string[] // Additional curl arguments like --cookie, --cookie-jar, etc.
 }
 
-export interface CuimpResponse<T = any> {
+export interface CuimpResponse<T = JSONValue> {
   status: number
   statusText: string
   headers: Record<string, string>
@@ -52,10 +52,10 @@ export interface CuimpResponse<T = any> {
 }
 
 export interface Logger {
-  info(...args: any[]): void
-  warn(...args: any[]): void
-  error(...args: any[]): void
-  debug(...args: any[]): void
+  info(...args: (string | number | boolean | object | null | undefined)[]): void
+  warn(...args: (string | number | boolean | object | null | undefined)[]): void
+  error(...args: (string | number | boolean | object | null | undefined)[]): void
+  debug(...args: (string | number | boolean | object | null | undefined)[]): void
 }
 
 export interface CuimpOptions {
@@ -66,35 +66,53 @@ export interface CuimpOptions {
   cookieJar?: CookieJarOption // Enable automatic cookie management
 }
 
+// Type for JSON-serializable values
+export type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JSONValue[]
+  | { [key: string]: JSONValue }
+
+// Type for query parameters
+export type QueryParams = Record<string, string | number | boolean | undefined>
+
+// Type for request headers (before normalization)
+export type RequestHeaders = Record<string, string | number | boolean>
+
+// Type for parsed response body (JSON or string)
+export type ParsedBody = JSONValue | string
+
 export interface CuimpInstance {
-  request<T = any>(config: CuimpRequestConfig): Promise<CuimpResponse<T>>
-  get<T = any>(
+  request<T = JSONValue>(config: CuimpRequestConfig): Promise<CuimpResponse<T>>
+  get<T = JSONValue>(
     url: string,
     config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
   ): Promise<CuimpResponse<T>>
-  delete<T = any>(
+  delete<T = JSONValue>(
     url: string,
     config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
   ): Promise<CuimpResponse<T>>
-  head<T = any>(
+  head<T = JSONValue>(
     url: string,
     config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
   ): Promise<CuimpResponse<T>>
-  options<T = any>(
+  options<T = JSONValue>(
     url: string,
     config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
   ): Promise<CuimpResponse<T>>
-  post<T = any>(
-    url: string,
-    data?: CuimpRequestConfig['data'],
-    config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-  ): Promise<CuimpResponse<T>>
-  put<T = any>(
+  post<T = JSONValue>(
     url: string,
     data?: CuimpRequestConfig['data'],
     config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
   ): Promise<CuimpResponse<T>>
-  patch<T = any>(
+  put<T = JSONValue>(
+    url: string,
+    data?: CuimpRequestConfig['data'],
+    config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
+  ): Promise<CuimpResponse<T>>
+  patch<T = JSONValue>(
     url: string,
     data?: CuimpRequestConfig['data'],
     config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>

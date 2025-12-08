@@ -111,7 +111,7 @@ describe('Integration Tests - Main API', () => {
       expect(command).toBe('/usr/bin/curl-impersonate -X GET "https://example.com"')
     })
 
-    it('should handle descriptor updates', async () => {
+    it('should handle descriptor updates', () => {
       const cuimp = new Cuimp()
 
       cuimp.setDescriptor({ browser: 'chrome', version: '123' })

@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import { RunResult } from './types/runTypes'
+import { CurlExitCode } from './types/curlErrors'
 import path from 'node:path'
 import fs from 'node:fs'
 
@@ -72,8 +73,8 @@ export function runBinary(
       }
     }
 
-    child.stdout.on('data', c => out.push(Buffer.from(c)))
-    child.stderr.on('data', c => err.push(Buffer.from(c)))
+    child.stdout.on('data', (c: Uint8Array) => out.push(Buffer.from(c)))
+    child.stderr.on('data', (c: Uint8Array) => err.push(Buffer.from(c)))
 
     child.on('error', e => {
       if (t) clearTimeout(t)
@@ -89,7 +90,7 @@ export function runBinary(
         return reject(new Error('Request aborted'))
       }
       resolve({
-        exitCode: code,
+        exitCode: code as CurlExitCode | null,
         stdout: Buffer.concat(out),
         stderr: Buffer.concat(err),
       })

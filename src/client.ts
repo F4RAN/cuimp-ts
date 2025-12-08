@@ -6,7 +6,12 @@ import type {
   CuimpResponse,
   Method,
   CookieJarOption,
+  QueryParams,
+  RequestHeaders,
+  ParsedBody,
+  JSONValue,
 } from './types/cuimpTypes'
+import type { RunResult } from './types/runTypes'
 import { CurlError, CurlExitCode } from './types/curlErrors'
 import { CookieJar } from './helpers/cookieJar'
 import { parseHttpResponse } from './helpers/parser'
@@ -17,7 +22,7 @@ function joinURL(base?: string, path?: string): string | undefined {
   return new URL(path, base).toString()
 }
 
-function encodeParams(params?: Record<string, any>): string {
+function encodeParams(params?: QueryParams): string {
   if (!params) return ''
   const usp = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
@@ -28,7 +33,7 @@ function encodeParams(params?: Record<string, any>): string {
   return qs ? `?${qs}` : ''
 }
 
-function normalizeHeaders(h?: Record<string, any>): Record<string, string> {
+function normalizeHeaders(h?: RequestHeaders): Record<string, string> {
   const out: Record<string, string> = {}
   if (!h) return out
   for (const [k, v] of Object.entries(h)) {
@@ -38,12 +43,12 @@ function normalizeHeaders(h?: Record<string, any>): Record<string, string> {
   return out
 }
 
-function tryParseBody(buf: Buffer, headers: Record<string, string>) {
+function tryParseBody(buf: Buffer, headers: Record<string, string>): ParsedBody {
   const ct = Object.keys(headers).find(h => h.toLowerCase() === 'content-type')
   const val = ct ? headers[ct] : ''
   if (val && val.toLowerCase().includes('application/json')) {
     try {
-      return JSON.parse(buf.toString('utf8'))
+      return JSON.parse(buf.toString('utf8')) as JSONValue
     } catch {
       /* fallthrough */
     }
@@ -133,7 +138,7 @@ export class CuimpHttp implements CuimpInstance {
     }
   }
 
-  async request<T = any>(config: CuimpRequestConfig): Promise<CuimpResponse<T>> {
+  async request<T = JSONValue>(config: CuimpRequestConfig): Promise<CuimpResponse<T>> {
     const method: Method = (config.method || 'GET').toUpperCase() as Method
 
     const urlBase = config.baseURL ?? this.defaults.baseURL
@@ -232,7 +237,7 @@ export class CuimpHttp implements CuimpInstance {
     const command = [bin, ...args.map(a => (/\s/.test(a) ? JSON.stringify(a) : a))].join(' ')
 
     // Execute
-    const result = await runBinary(bin, args, {
+    const result: RunResult = await runBinary(bin, args, {
       timeout: config.timeout ?? this.defaults.timeout,
       signal: config.signal,
     })
@@ -243,15 +248,16 @@ export class CuimpHttp implements CuimpInstance {
       stdoutBuf.length > 0 && stdoutBuf.subarray(0, 5).equals(Buffer.from('HTTP/'))
 
     // Check exit code
-    if (result.exitCode !== null && result.exitCode !== CurlExitCode.OK) {
+    const exitCode: CurlExitCode | null = result.exitCode
+    if (exitCode !== null && exitCode !== CurlExitCode.OK) {
       // For HTTP_RETURNED_ERROR (22), if we have a valid HTTP response in stdout,
       // parse it and return it instead of throwing an error
-      if (result.exitCode === CurlExitCode.HTTP_RETURNED_ERROR && hasHttpResponse) {
+      if (exitCode === CurlExitCode.HTTP_RETURNED_ERROR && hasHttpResponse) {
         // Continue to parse the response below - don't throw
       } else {
         // For other errors or when there's no valid HTTP response, throw
         const stderr = result.stderr.toString('utf8')
-        throw new CurlError(result.exitCode as CurlExitCode, stderr)
+        throw new CurlError(exitCode as CurlExitCode, stderr)
       }
     }
 
@@ -275,37 +281,49 @@ export class CuimpHttp implements CuimpInstance {
   }
 
   // Shorthand methods
-  get<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+  get<T = JSONValue>(
+    url: string,
+    config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
+  ): Promise<CuimpResponse<T>> {
     return this.request<T>({ ...config, url, method: 'GET' })
   }
-  delete<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+  delete<T = JSONValue>(
+    url: string,
+    config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
+  ): Promise<CuimpResponse<T>> {
     return this.request<T>({ ...config, url, method: 'DELETE' })
   }
-  head<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+  head<T = JSONValue>(
+    url: string,
+    config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
+  ): Promise<CuimpResponse<T>> {
     return this.request<T>({ ...config, url, method: 'HEAD' })
   }
-  options<T = any>(url: string, config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}) {
+  options<T = JSONValue>(
+    url: string,
+    config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
+  ): Promise<CuimpResponse<T>> {
     return this.request<T>({ ...config, url, method: 'OPTIONS' })
   }
-  post<T = any>(
+  post<T = JSONValue>(
     url: string,
     data?: CuimpRequestConfig['data'],
     config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
-  ) {
+  ): Promise<CuimpResponse<T>> {
     return this.request<T>({ ...config, url, data, method: 'POST' })
   }
-  put<T = any>(
+  put<T = JSONValue>(
     url: string,
     data?: CuimpRequestConfig['data'],
     config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
-  ) {
+  ): Promise<CuimpResponse<T>> {
     return this.request<T>({ ...config, url, data, method: 'PUT' })
   }
-  patch<T = any>(
+  patch<T = JSONValue>(
     url: string,
     data?: CuimpRequestConfig['data'],
     config: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'> = {}
-  ) {
+  ): Promise<CuimpResponse<T>> {
     return this.request<T>({ ...config, url, data, method: 'PATCH' })
   }
 }

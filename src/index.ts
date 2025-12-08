@@ -27,7 +27,7 @@ export { runBinary } from './runner'
 // Import for internal use
 import { Cuimp } from './cuimp'
 import { CuimpHttp } from './client'
-import type { CuimpOptions, CuimpRequestConfig } from './types/cuimpTypes'
+import type { CuimpOptions, CuimpRequestConfig, CuimpResponse, JSONValue } from './types/cuimpTypes'
 
 // Factory function for creating HTTP client instances
 export function createCuimpHttp(options?: CuimpOptions) {
@@ -43,67 +43,69 @@ export function createCuimpHttp(options?: CuimpOptions) {
 }
 
 // Convenience function for quick HTTP requests
-export async function request<T = any>(config: CuimpRequestConfig) {
+export async function request<T = JSONValue>(
+  config: CuimpRequestConfig
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.request<T>(config)
 }
 
 // Convenience functions for common HTTP methods
-export async function get<T = any>(
+export async function get<T = JSONValue>(
   url: string,
   config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-) {
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.get<T>(url, config)
 }
 
-export async function post<T = any>(
+export async function post<T = JSONValue>(
   url: string,
   data?: CuimpRequestConfig['data'],
   config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-) {
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.post<T>(url, data, config)
 }
 
-export async function put<T = any>(
+export async function put<T = JSONValue>(
   url: string,
   data?: CuimpRequestConfig['data'],
   config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-) {
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.put<T>(url, data, config)
 }
 
-export async function patch<T = any>(
+export async function patch<T = JSONValue>(
   url: string,
   data?: CuimpRequestConfig['data'],
   config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-) {
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.patch<T>(url, data, config)
 }
 
-export async function del<T = any>(
+export async function del<T = JSONValue>(
   url: string,
   config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-) {
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.delete<T>(url, config)
 }
 
-export async function head<T = any>(
+export async function head<T = JSONValue>(
   url: string,
   config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-) {
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.head<T>(url, config)
 }
 
-export async function options<T = any>(
+export async function options<T = JSONValue>(
   url: string,
   config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>
-) {
+): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.options<T>(url, config)
 }

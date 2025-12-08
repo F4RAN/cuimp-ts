@@ -224,8 +224,8 @@ const downloadAndExtractBinary = async (
 ): Promise<DownloadResult> => {
   try {
     // Get latest release info
-    const latestVersion = await getLatestRelease()
-    const actualVersion =
+    const latestVersion: string = await getLatestRelease()
+    const actualVersion: string =
       version === 'latest' ? latestVersion.replace(/^v/, '') : version.replace(/^v/, '')
 
     // Construct download URL with correct naming convention
