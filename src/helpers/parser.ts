@@ -121,6 +121,51 @@ const validateParameters = (browser: string, architecture: string, platform: str
 }
 
 /**
+ * Searches for existing curl-impersonate binary with a specific version
+ */
+const findBinaryWithVersion = (browser: string, version: string): string | null => {
+  // Get the user's home directory for binaries (primary location)
+  const homeDir = os.homedir()
+  const homeBinariesDir = path.resolve(homeDir, '.cuimp', 'binaries')
+
+  // Get the package binaries directory dynamically (fallback)
+  const packageDir = getPackageDir()
+  const packageBinariesDir = path.resolve(packageDir, 'cuimp/binaries')
+
+  // On Windows, binaries are extracted to a 'bin' subdirectory
+  const isWindows = process.platform === 'win32'
+  const searchPaths = [
+    homeBinariesDir,
+    ...(isWindows ? [path.resolve(homeBinariesDir, 'bin')] : []),
+    packageBinariesDir,
+    ...(isWindows ? [path.resolve(packageBinariesDir, 'bin')] : []),
+    ...BINARY_SEARCH_PATHS,
+  ]
+
+  // Look for browser-specific binary with version (e.g., curl_chrome136)
+  const versionPattern = `curl_${browser}${version}`
+  const versionPatterns = isWindows
+    ? [`${versionPattern}.exe`, `${versionPattern}.bat`, versionPattern]
+    : [versionPattern]
+
+  for (const searchPath of searchPaths) {
+    for (const pattern of versionPatterns) {
+      try {
+        const fullPath = path.join(searchPath, pattern)
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+          return fullPath
+        }
+      } catch (error) {
+        // Continue searching if directory doesn't exist or is not accessible
+        continue
+      }
+    }
+  }
+
+  return null
+}
+
+/**
  * Searches for existing curl-impersonate binary in system paths
  */
 const findExistingBinary = (browser: string = ''): string | null => {
@@ -446,14 +491,46 @@ export const parseDescriptor = async (
         // Note: This is the browser version, not the curl-impersonate release version
         const browserVersion = extractVersionNumber(path.basename(existingBinary)).toString()
 
-        // Accept any existing binary for the requested browser
-        // The 'version' field in descriptor refers to curl-impersonate release version,
-        // which we can't easily determine from the cached binary filename
-        logger.info(`Found existing binary: ${existingBinary}`)
-        return {
-          binaryPath: existingBinary,
-          isDownloaded: false,
-          version: browserVersion || 'unknown',
+        // Check if the existing binary version matches the requested version
+        // If version is specified and doesn't match, check if correct version exists first
+        if (version && version !== 'latest') {
+          const requestedVersion = version.toString()
+          if (browserVersion !== requestedVersion) {
+            // First, check if the requested version binary already exists
+            const requestedBinary = findBinaryWithVersion(browser, requestedVersion)
+            if (requestedBinary) {
+              logger.info(
+                `Found existing binary ${existingBinary} (version ${browserVersion}), but requested version ${requestedVersion}. Using existing ${requestedVersion} binary.`
+              )
+              const requestedBrowserVersion = extractVersionNumber(path.basename(requestedBinary)).toString()
+              return {
+                binaryPath: requestedBinary,
+                isDownloaded: false,
+                version: requestedBrowserVersion || 'unknown',
+              }
+            }
+            // Requested version doesn't exist, need to download
+            logger.info(
+              `Found existing binary ${existingBinary} (version ${browserVersion}), but requested version ${requestedVersion} not found. Downloading correct version...`
+            )
+            // Continue to download section below - don't return here
+          } else {
+            // Version matches, use existing binary
+            logger.info(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
+            return {
+              binaryPath: existingBinary,
+              isDownloaded: false,
+              version: browserVersion || 'unknown',
+            }
+          }
+        } else {
+          // No version specified or 'latest', accept any existing binary
+          logger.info(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
+          return {
+            binaryPath: existingBinary,
+            isDownloaded: false,
+            version: browserVersion || 'unknown',
+          }
         }
       }
     } else {
