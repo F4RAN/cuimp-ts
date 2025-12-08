@@ -502,7 +502,9 @@ export const parseDescriptor = async (
               logger.info(
                 `Found existing binary ${existingBinary} (version ${browserVersion}), but requested version ${requestedVersion}. Using existing ${requestedVersion} binary.`
               )
-              const requestedBrowserVersion = extractVersionNumber(path.basename(requestedBinary)).toString()
+              const requestedBrowserVersion = extractVersionNumber(
+                path.basename(requestedBinary)
+              ).toString()
               return {
                 binaryPath: requestedBinary,
                 isDownloaded: false,
