@@ -63,6 +63,52 @@ async function test() {
   } catch (error) {
     console.log('❌ Unexpected error:', error.message)
   }
+
+  console.log()
+
+  // Test 404 with actual JSON error body
+  console.log('5. Testing 404 with JSON error body...')
+  try {
+    const { get } = await import('../dist/index.js')
+    const errorResponse = await get('https://postman-echo.com/status/404')
+    console.log('✅ 404 Response with JSON body:')
+    console.log('   Status:', errorResponse.status)
+    console.log('   Status Text:', errorResponse.statusText)
+    console.log('   Body:', JSON.stringify(errorResponse.data, null, 2))
+    console.log('   Content-Type:', errorResponse.headers['content-type'])
+  } catch (error) {
+    console.log('❌ Error:', error.message)
+  }
+
+  console.log()
+
+  // Test 500 with actual JSON error body
+  console.log('6. Testing 500 with JSON error body (Postman Echo)...')
+  try {
+    const { get } = await import('../dist/index.js')
+    const errorResponse = await get('https://postman-echo.com/status/500')
+    console.log('✅ 500 Response with JSON body:')
+    console.log('   Status:', errorResponse.status)
+    console.log('   Status Text:', errorResponse.statusText)
+    console.log('   Body:', JSON.stringify(errorResponse.data, null, 2))
+    console.log('   Headers:', errorResponse.headers['content-type'])
+  } catch (error) {
+    console.log('❌ Error:', error.message)
+  }
+
+  console.log()
+
+  // Test 400 with actual JSON error body (httpbin with message)
+  console.log('7. Testing 400 with custom error message (httpbin)...')
+  try {
+    const { get } = await import('../dist/index.js')
+    const errorResponse = await get('https://httpbin.org/status/400?message=Invalid%20request%20parameters')
+    console.log('✅ 400 Response with body:')
+    console.log('   Status:', errorResponse.status)
+    console.log('   Body:', errorResponse.data)
+  } catch (error) {
+    console.log('❌ Error:', error.message)
+  }
 }
 
 test().catch(console.error)

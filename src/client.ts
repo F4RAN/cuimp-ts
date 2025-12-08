@@ -3,6 +3,7 @@ import { runBinary } from './runner';
 import type { CuimpInstance, CuimpRequestConfig, CuimpResponse, Method, CookieJarOption } from './types/cuimpTypes';
 import { CurlError, CurlExitCode } from './types/curlErrors';
 import { CookieJar } from './helpers/cookieJar';
+import { HTTP_STATUS_MAP } from './constants/httpConstants';
 
 function joinURL(base?: string, path?: string): string | undefined {
   if (!path) return base;
@@ -81,6 +82,104 @@ function getProxyFromEnvironment(): string | undefined {
   }
   
   return undefined;
+}
+
+const HTTP_STATUS_TEXT_MAP: Record<number, string> = {
+  200: 'OK',
+  201: 'Created',
+  204: 'No Content',
+  400: 'Bad Request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
+  404: 'Not Found',
+  405: 'Method Not Allowed',
+  409: 'Conflict',
+  500: 'Internal Server Error',
+  502: 'Bad Gateway',
+  503: 'Service Unavailable',
+  504: 'Gateway Timeout',
+};
+
+function getStatusText(status: number, providedText?: string): string {
+  return providedText || HTTP_STATUS_TEXT_MAP[status] || '';
+}
+
+function parseHttpResponse(stdoutBuf: Buffer): { status: number; statusText: string; headers: Record<string, string>; body: Buffer } {
+  const httpMarker = Buffer.from('HTTP/');
+  
+  // Find all positions where HTTP responses start
+  const httpStarts: number[] = [];
+  for (let i = 0; i <= stdoutBuf.length - 5; i++) {
+    if (stdoutBuf.slice(i, i + 5).equals(httpMarker)) {
+      httpStarts.push(i);
+    }
+  }
+  
+  if (httpStarts.length === 0) {
+    const previewText = stdoutBuf.toString('utf8', 0, Math.min(500, stdoutBuf.length));
+    throw new Error(`No HTTP response found:\n${previewText}`);
+  }
+  
+  // Find header/body separator
+  const separator1 = Buffer.from('\r\n\r\n');
+  const separator2 = Buffer.from('\n\n');
+  
+  let lastHeaderEnd = 0;
+  let lastHeaderEndLength = 0;
+  
+  for (const httpStart of httpStarts) {
+    let found = false;
+    for (let i = httpStart; i < stdoutBuf.length; i++) {
+      if (i + 4 <= stdoutBuf.length && stdoutBuf.slice(i, i + 4).equals(separator1)) {
+        lastHeaderEnd = i;
+        lastHeaderEndLength = 4;
+        found = true;
+        break;
+      } else if (i + 2 <= stdoutBuf.length && stdoutBuf.slice(i, i + 2).equals(separator2)) {
+        lastHeaderEnd = i;
+        lastHeaderEndLength = 2;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      lastHeaderEnd = stdoutBuf.length;
+      lastHeaderEndLength = 0;
+    }
+  }
+  
+  // Extract headers and body
+  const headerBuf = stdoutBuf.slice(0, lastHeaderEnd);
+  const rawBody = stdoutBuf.slice(lastHeaderEnd + lastHeaderEndLength);
+  const headerText = headerBuf.toString('utf8');
+  
+  // Handle multiple header blocks (redirects)
+  const httpBlocks = headerText.split(/(?=HTTP\/)/);
+  const validBlocks = httpBlocks.filter(block => 
+    block.trim() && /^HTTP\/[1-3](?:\.\d)? \d{3}/.test(block.trim())
+  );
+  
+  const lastBlock = validBlocks.length ? validBlocks[validBlocks.length - 1] : headerText;
+  const cleanBlock = lastBlock.replace(/\r?\n\r?\n$/, '');
+  
+  // Parse status + headers
+  const headerLines = cleanBlock.split(/\r?\n/);
+  const statusLine = headerLines.shift() || 'HTTP/1.1 200 OK';
+  const m = statusLine.match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})(?:\s+(.*))?$/);
+  const status = m ? parseInt(m[1], 10) : 200;
+  const statusText = getStatusText(status, m?.[2]);
+  
+  const headers: Record<string, string> = {};
+  for (const line of headerLines) {
+    const idx = line.indexOf(':');
+    if (idx > 0) {
+      const k = line.slice(0, idx).trim();
+      const v = line.slice(idx + 1).trim();
+      headers[k] = v;
+    }
+  }
+  
+  return { status, statusText, headers, body: rawBody };
 }
 
 export class CuimpHttp implements CuimpInstance {
@@ -208,13 +307,11 @@ export class CuimpHttp implements CuimpInstance {
 
     // Add --fail-with-body by default to get response body on 4xx/5xx
     // Only add if not already present and --fail is not present
-    if(!args.includes('--fail-with-body') && !args.includes('--fail')){
-      args.push('--fail-with-body')
+    if (!args.includes('--fail-with-body') && !args.includes('--fail')) {
+      args.push('--fail-with-body');
     }
 
-
-    // Always capture headers: use -D - (dump headers to stdout) won't work nicely;
-    // Instead use: -i to include headers in output, then split.
+    // Always capture headers: use -i to include headers in output, then split.
     args.push('-i');
 
     // URL at the end
@@ -230,123 +327,21 @@ export class CuimpHttp implements CuimpInstance {
     const stdoutBuf = result.stdout;
     const hasHttpResponse = stdoutBuf.length > 0 && stdoutBuf.subarray(0, 5).equals(Buffer.from('HTTP/'));
     
-
     // Check exit code
     if (result.exitCode !== null && result.exitCode !== CurlExitCode.OK) {
-      const stderr = result.stderr.toString('utf8');
+      // For HTTP_RETURNED_ERROR (22), if we have a valid HTTP response in stdout,
+      // parse it and return it instead of throwing an error
       if (result.exitCode === CurlExitCode.HTTP_RETURNED_ERROR && hasHttpResponse) {
-
-      }else{
+        // Continue to parse the response below - don't throw
+      } else {
+        // For other errors or when there's no valid HTTP response, throw
         const stderr = result.stderr.toString('utf8');
         throw new CurlError(result.exitCode as CurlExitCode, stderr);
       }
-      
     }
 
-    // curl outputs with -i flag:
-    // [HTTP/1.1 200 OK\r\nHeaders...\r\n\r\n]...body...
-    // With redirects: HTTP/1.1 302...\r\n\r\nHTTP/1.1 200...\r\n\r\nbody
-    
-
-    const httpMarker = Buffer.from('HTTP/');
-    
-    // Find all positions where HTTP responses start
-    const httpStarts: number[] = [];
-    for (let i = 0; i <= stdoutBuf.length - 5; i++) {
-      if (stdoutBuf.slice(i, i + 5).equals(httpMarker)) {
-        httpStarts.push(i);
-      }
-    }
-    
-    if (httpStarts.length === 0) {
-      const previewText = stdoutBuf.toString('utf8', 0, Math.min(500, stdoutBuf.length));
-      throw new Error(`No HTTP response found:\n${previewText}`);
-    }
-    
-    // For each HTTP response block, find its end (first \r\n\r\n or \n\n after HTTP/)
-    const separator1 = Buffer.from('\r\n\r\n');
-    const separator2 = Buffer.from('\n\n');
-    
-    let lastHeaderEnd = 0;
-    let lastHeaderEndLength = 0;
-    
-    for (const httpStart of httpStarts) {
-      // Search for separator starting from this HTTP block
-      let found = false;
-      for (let i = httpStart; i < stdoutBuf.length; i++) {
-        if (i + 4 <= stdoutBuf.length && stdoutBuf.slice(i, i + 4).equals(separator1)) {
-          lastHeaderEnd = i;
-          lastHeaderEndLength = 4;
-          found = true;
-          break;
-        } else if (i + 2 <= stdoutBuf.length && stdoutBuf.slice(i, i + 2).equals(separator2)) {
-          lastHeaderEnd = i;
-          lastHeaderEndLength = 2;
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        // This HTTP block has no proper ending, might be malformed
-        lastHeaderEnd = stdoutBuf.length;
-        lastHeaderEndLength = 0;
-      }
-    }
-    
-    // Everything before lastHeaderEnd is headers, everything after is body
-    const headerBuf = stdoutBuf.slice(0, lastHeaderEnd);
-    const rawBody = stdoutBuf.slice(lastHeaderEnd + lastHeaderEndLength);
-    
-    // Decode headers only (safe as HTTP headers are ASCII/UTF-8)
-    const headerText = headerBuf.toString('utf8');
-    
-    // Handle multiple header blocks (redirects)
-    // Split by HTTP/ and process each block
-    const httpBlocks = headerText.split(/(?=HTTP\/)/);
-    const validBlocks = httpBlocks.filter(block => 
-      block.trim() && /^HTTP\/[1-3](?:\.\d)? \d{3}/.test(block.trim())
-    );
-    
-    // Use the last valid HTTP response block
-    const lastBlock = validBlocks.length ? validBlocks[validBlocks.length - 1] : headerText;
-    
-    // Remove the trailing separator from lastBlock if present
-    const cleanBlock = lastBlock.replace(/\r?\n\r?\n$/, '');
-
-    // Parse status + headers
-    const headerLines = cleanBlock.split(/\r?\n/);
-    const statusLine = headerLines.shift() || 'HTTP/1.1 200 OK';
-    const m = statusLine.match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})(?:\s+(.*))?$/);
-    const status = m ? parseInt(m[1], 10) : 200;
-    let statusText = m && m[2] ? m[2] : '';
-
-    const statusTextMap: Record<number, string> = {
-      200: 'OK',
-      201: 'Created',
-      204: 'No Content',
-      400: 'Bad Request',
-      401: 'Unauthorized',
-      403: 'Forbidden',
-      404: 'Not Found',
-      405: 'Method Not Allowed',
-      409: 'Conflict',
-      500: 'Internal Server Error',
-      502: 'Bad Gateway',
-      503: 'Service Unavailable',
-      504: 'Gateway Timeout',
-    };
-    statusText = statusTextMap[status] || '';
-
-    const respHeaders: Record<string,string> = {};
-    for (const line of headerLines) {
-      const idx = line.indexOf(':');
-      if (idx > 0) {
-        const k = line.slice(0, idx).trim();
-        const v = line.slice(idx + 1).trim();
-        respHeaders[k] = v;
-      }
-    }
-
+    // Parse HTTP response
+    const { status, statusText, headers: respHeaders, body: rawBody } = parseHttpResponse(stdoutBuf);
     const parsed = tryParseBody(rawBody, respHeaders) as T;
 
     return {
