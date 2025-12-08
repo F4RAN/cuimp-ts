@@ -36,6 +36,7 @@ Make HTTP requests that mimic real browser behavior and bypass anti-bot protecti
 - 🔒 **Proxy Support**: Built-in support for HTTP, HTTPS, and SOCKS proxies with authentication
 - 📁 **Clean Installation**: Binaries stored in package directory, not your project root
 - 🍪 **Cookie Management**: Automatic cookie storage and sending across requests
+- ✅ **Error Response Bodies**: Returns full HTTP response body on 4xx/5xx errors (like axios/Postman)
 
 ## 📑 Table of Contents
 
@@ -545,7 +546,7 @@ By default, cuimp uses `console` for logging.
 
 ## Response Format
 
-All HTTP methods return a standardized response:
+All HTTP methods return a standardized response. **Important**: Unlike traditional curl behavior, cuimp returns response objects for all HTTP status codes (including 4xx/5xx), allowing you to access error response bodies, headers, and status information. Only network errors (connection failures, DNS errors, etc.) throw exceptions.
 
 ```typescript
 interface CuimpResponse<T = any> {
@@ -611,7 +612,59 @@ const cuimp = new Cuimp({
 const info = await cuimp.verifyBinary()
 ```
 
+### Handling 4xx/5xx Error Responses
+
+```javascript
+import { get, post } from 'cuimp'
+
+// 4xx/5xx responses return response objects (not thrown)
+const response = await get('https://httpbin.org/status/404')
+
+if (response.status === 404) {
+  console.log('Resource not found:', response.data)
+} else if (response.status >= 500) {
+  console.error('Server error:', response.statusText)
+  console.error('Error details:', response.data)
+} else if (response.status >= 400) {
+  console.warn('Client error:', response.status, response.statusText)
+}
+
+// Handle JSON error responses
+const errorResponse = await post('https://api.example.com/users', {
+  email: 'invalid-email',
+})
+
+if (errorResponse.status === 400) {
+  // Access the error body (parsed JSON if Content-Type is application/json)
+  const errorData = errorResponse.data
+  console.log('Validation errors:', errorData.errors)
+  console.log('Error message:', errorData.message)
+}
+```
+
 ### Error Handling
+
+**4xx/5xx Responses**: Unlike traditional curl behavior, cuimp returns full response objects for HTTP error status codes (4xx/5xx), similar to axios and Postman. This allows you to access error response bodies, headers, and status information.
+
+```javascript
+import { get } from 'cuimp'
+
+// 4xx/5xx responses return response objects (not thrown)
+const response = await get('https://httpbin.org/status/404')
+console.log('Status:', response.status) // 404
+console.log('Status Text:', response.statusText) // 'Not Found'
+console.log('Body:', response.data) // Response body (if any)
+console.log('Headers:', response.headers) // Response headers
+
+// Check status and handle accordingly
+if (response.status >= 400) {
+  console.error(`Error ${response.status}:`, response.data)
+} else {
+  console.log('Success:', response.data)
+}
+```
+
+**Network Errors**: Network errors (connection failures, DNS errors, etc.) are still thrown as exceptions:
 
 ```javascript
 import { get } from 'cuimp'
@@ -621,9 +674,9 @@ try {
   console.log(response.data)
 } catch (error) {
   if (error.code === 'ENOTFOUND') {
-    console.log('Network error')
-  } else if (error.status) {
-    console.log(`HTTP ${error.status}: ${error.statusText}`)
+    console.log('Network error: DNS resolution failed')
+  } else if (error.code === 'ECONNREFUSED') {
+    console.log('Network error: Connection refused')
   } else {
     console.log('Unknown error:', error.message)
   }
