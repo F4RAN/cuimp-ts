@@ -205,6 +205,14 @@ export class CuimpHttp implements CuimpInstance {
       args.push(...extraArgs);
     }
 
+
+    // Add --fail-with-body by default to get response body on 4xx/5xx
+    // Only add if not already present and --fail is not present
+    if(!args.includes('--fail-with-body') && !args.includes('--fail')){
+      args.push('--fail-with-body')
+    }
+
+
     // Always capture headers: use -D - (dump headers to stdout) won't work nicely;
     // Instead use: -i to include headers in output, then split.
     args.push('-i');
@@ -218,17 +226,28 @@ export class CuimpHttp implements CuimpInstance {
     // Execute
     const result = await runBinary(bin, args, { timeout: config.timeout ?? this.defaults.timeout, signal: config.signal });
 
+    // Check exit code - but for HTTP_RETURNED_ERROR (22), we may still have a valid response body
+    const stdoutBuf = result.stdout;
+    const hasHttpResponse = stdoutBuf.length > 0 && stdoutBuf.subarray(0, 5).equals(Buffer.from('HTTP/'));
+    
+
     // Check exit code
     if (result.exitCode !== null && result.exitCode !== CurlExitCode.OK) {
       const stderr = result.stderr.toString('utf8');
-      throw new CurlError(result.exitCode as CurlExitCode, stderr);
+      if (result.exitCode === CurlExitCode.HTTP_RETURNED_ERROR && hasHttpResponse) {
+
+      }else{
+        const stderr = result.stderr.toString('utf8');
+        throw new CurlError(result.exitCode as CurlExitCode, stderr);
+      }
+      
     }
 
     // curl outputs with -i flag:
     // [HTTP/1.1 200 OK\r\nHeaders...\r\n\r\n]...body...
     // With redirects: HTTP/1.1 302...\r\n\r\nHTTP/1.1 200...\r\n\r\nbody
     
-    const stdoutBuf = result.stdout;
+
     const httpMarker = Buffer.from('HTTP/');
     
     // Find all positions where HTTP responses start
@@ -297,9 +316,26 @@ export class CuimpHttp implements CuimpInstance {
     // Parse status + headers
     const headerLines = cleanBlock.split(/\r?\n/);
     const statusLine = headerLines.shift() || 'HTTP/1.1 200 OK';
-    const m = statusLine.match(/^HTTP\/\d\.\d\s+(\d{3})\s+(.*)$/);
+    const m = statusLine.match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})(?:\s+(.*))?$/);
     const status = m ? parseInt(m[1], 10) : 200;
-    const statusText = m ? m[2] : 'OK';
+    let statusText = m && m[2] ? m[2] : '';
+
+    const statusTextMap: Record<number, string> = {
+      200: 'OK',
+      201: 'Created',
+      204: 'No Content',
+      400: 'Bad Request',
+      401: 'Unauthorized',
+      403: 'Forbidden',
+      404: 'Not Found',
+      405: 'Method Not Allowed',
+      409: 'Conflict',
+      500: 'Internal Server Error',
+      502: 'Bad Gateway',
+      503: 'Service Unavailable',
+      504: 'Gateway Timeout',
+    };
+    statusText = statusTextMap[status] || '';
 
     const respHeaders: Record<string,string> = {};
     for (const line of headerLines) {
