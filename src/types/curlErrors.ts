@@ -101,13 +101,13 @@ export class CurlError extends Error {
     public readonly stderr?: string,
     message?: string
   ) {
-    const errorMessage = message || CurlExitCode[code] || `Curl exited with code ${code}`;
-    super(errorMessage);
-    this.name = 'CurlError';
+    const errorMessage = message || CurlExitCode[code] || `Curl exited with code ${code}`
+    super(errorMessage)
+    this.name = 'CurlError'
 
     // Append stderr if available
     if (stderr) {
-      this.message += `\nStderr: ${stderr}`;
+      this.message += `\nStderr: ${stderr}`
     }
   }
 }

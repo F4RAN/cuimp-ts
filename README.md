@@ -36,6 +36,7 @@ Make HTTP requests that mimic real browser behavior and bypass anti-bot protecti
 - 🔒 **Proxy Support**: Built-in support for HTTP, HTTPS, and SOCKS proxies with authentication
 - 📁 **Clean Installation**: Binaries stored in package directory, not your project root
 - 🍪 **Cookie Management**: Automatic cookie storage and sending across requests
+- ✅ **Error Response Bodies**: Returns full HTTP response body on 4xx/5xx errors (like axios/Postman)
 
 ## 📑 Table of Contents
 
@@ -72,12 +73,12 @@ console.log(response.data)
 // POST with data
 const result = await post('https://httpbin.org/post', {
   name: 'John Doe',
-  email: 'john@example.com'
+  email: 'john@example.com',
 })
 
 // Using HTTP client instance
 const client = createCuimpHttp({
-  descriptor: { browser: 'chrome', version: '123' }
+  descriptor: { browser: 'chrome', version: '123' },
 })
 
 const data = await client.get('https://api.example.com/users')
@@ -92,15 +93,15 @@ import { get, createCuimpHttp } from 'cuimp'
 
 // Create a client that mimics Chrome 123
 const scraper = createCuimpHttp({
-  descriptor: { browser: 'chrome', version: '123' }
+  descriptor: { browser: 'chrome', version: '123' },
 })
 
 // Scrape a website that blocks regular requests
 const response = await scraper.get('https://example.com/protected-content', {
   headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-  }
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  },
 })
 
 console.log('Scraped content:', response.data)
@@ -116,9 +117,9 @@ const browsers = ['chrome', 'firefox', 'safari', 'edge']
 
 for (const browser of browsers) {
   const client = createCuimpHttp({
-    descriptor: { browser, version: 'latest' }
+    descriptor: { browser, version: 'latest' },
   })
-  
+
   const response = await client.get('https://your-api.com/test')
   console.log(`${browser}: ${response.status}`)
 }
@@ -132,7 +133,7 @@ import { createCuimpHttp } from 'cuimp'
 // Enable automatic cookie management
 const client = createCuimpHttp({
   descriptor: { browser: 'chrome', version: '123' },
-  cookieJar: true  // Cookies are automatically stored and sent
+  cookieJar: true, // Cookies are automatically stored and sent
 })
 
 // First request - server sets cookies
@@ -161,19 +162,19 @@ import { request } from 'cuimp'
 // HTTP proxy
 const response1 = await request({
   url: 'https://httpbin.org/ip',
-  proxy: 'http://proxy.example.com:8080'
+  proxy: 'http://proxy.example.com:8080',
 })
 
 // SOCKS5 proxy with authentication
 const response2 = await request({
   url: 'https://httpbin.org/ip',
-  proxy: 'socks5://user:pass@proxy.example.com:1080'
+  proxy: 'socks5://user:pass@proxy.example.com:1080',
 })
 
 // Automatic proxy detection from environment variables
 // HTTP_PROXY, HTTPS_PROXY, ALL_PROXY
 const response3 = await request({
-  url: 'https://httpbin.org/ip'
+  url: 'https://httpbin.org/ip',
   // Will automatically use HTTP_PROXY if set
 })
 ```
@@ -189,8 +190,8 @@ const binaryInfo = await cuimp.download()
 console.log('Downloaded:', binaryInfo.binaryPath)
 
 // Method 2: Using convenience function
-const info = await downloadBinary({ 
-  descriptor: { browser: 'firefox', version: '133' } 
+const info = await downloadBinary({
+  descriptor: { browser: 'firefox', version: '133' },
 })
 
 // Pre-download multiple browsers for offline use
@@ -208,18 +209,21 @@ import { createCuimpHttp } from 'cuimp'
 
 // Suppress all logs
 const silentLogger = {
-  info: () => {}, warn: () => {}, error: () => {}, debug: () => {}
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  debug: () => {},
 }
 
 const client = createCuimpHttp({
   descriptor: { browser: 'chrome' },
-  logger: silentLogger
+  logger: silentLogger,
 })
 
 // Or use a structured logger (Winston, Pino, etc.)
 const client = createCuimpHttp({
   descriptor: { browser: 'chrome' },
-  logger: myStructuredLogger
+  logger: myStructuredLogger,
 })
 ```
 
@@ -228,6 +232,7 @@ const client = createCuimpHttp({
 ### Convenience Functions
 
 #### `get(url, config?)`
+
 Make a GET request.
 
 ```javascript
@@ -235,31 +240,38 @@ const response = await get('https://api.example.com/users')
 ```
 
 #### `post(url, data?, config?)`
+
 Make a POST request.
 
 ```javascript
 const response = await post('https://api.example.com/users', {
   name: 'John Doe',
-  email: 'john@example.com'
+  email: 'john@example.com',
 })
 ```
 
 #### `put(url, data?, config?)`
+
 Make a PUT request.
 
 #### `patch(url, data?, config?)`
+
 Make a PATCH request.
 
 #### `del(url, config?)`
+
 Make a DELETE request.
 
 #### `head(url, config?)`
+
 Make a HEAD request.
 
 #### `options(url, config?)`
+
 Make an OPTIONS request.
 
 #### `downloadBinary(options?)`
+
 Download curl-impersonate binary without making HTTP requests.
 
 ```javascript
@@ -267,20 +279,21 @@ Download curl-impersonate binary without making HTTP requests.
 const info = await downloadBinary()
 
 // Download specific browser binary
-const chromeInfo = await downloadBinary({ 
-  descriptor: { browser: 'chrome', version: '123' } 
+const chromeInfo = await downloadBinary({
+  descriptor: { browser: 'chrome', version: '123' },
 })
 ```
 
 ### HTTP Client
 
 #### `createCuimpHttp(options?)`
+
 Create an HTTP client instance.
 
 ```javascript
 const client = createCuimpHttp({
   descriptor: { browser: 'chrome', version: '123' },
-  path: '/custom/path/to/binary'
+  path: '/custom/path/to/binary',
 })
 
 // Use the client
@@ -288,6 +301,7 @@ const response = await client.get('https://api.example.com/data')
 ```
 
 #### `request(config)`
+
 Make a request with full configuration.
 
 ```javascript
@@ -295,17 +309,18 @@ const response = await request({
   url: 'https://api.example.com/users',
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer token',
-    'Content-Type': 'application/json'
+    Authorization: 'Bearer token',
+    'Content-Type': 'application/json',
   },
   data: { name: 'John Doe' },
-  timeout: 5000
+  timeout: 5000,
 })
 ```
 
 ### Core Classes
 
 #### `Cuimp`
+
 The core class for managing curl-impersonate binaries and descriptors.
 
 ```javascript
@@ -313,7 +328,7 @@ import { Cuimp } from 'cuimp'
 
 const cuimp = new Cuimp({
   descriptor: { browser: 'chrome', version: '123' },
-  path: '/custom/path'
+  path: '/custom/path',
 })
 
 // Verify binary
@@ -327,6 +342,7 @@ const binaryInfo = await cuimp.download()
 ```
 
 #### `CuimpHttp`
+
 HTTP client class that wraps the Cuimp core.
 
 ```javascript
@@ -335,7 +351,7 @@ import { CuimpHttp, Cuimp } from 'cuimp'
 const core = new Cuimp()
 const client = new CuimpHttp(core, {
   baseURL: 'https://api.example.com',
-  timeout: 10000
+  timeout: 10000,
 })
 ```
 
@@ -348,10 +364,10 @@ Configure which browser to impersonate:
 ```typescript
 interface CuimpDescriptor {
   browser?: 'chrome' | 'firefox' | 'edge' | 'safari'
-  version?: string  // e.g., '123', '124', or 'latest' (default)
+  version?: string // e.g., '123', '124', or 'latest' (default)
   architecture?: 'x64' | 'arm64'
   platform?: 'linux' | 'windows' | 'macos'
-  forceDownload?: boolean  // Force re-download even if binary exists
+  forceDownload?: boolean // Force re-download even if binary exists
 }
 ```
 
@@ -367,9 +383,9 @@ interface CuimpRequestConfig {
   data?: any
   timeout?: number
   maxRedirects?: number
-  proxy?: string  // HTTP, HTTPS, or SOCKS proxy URL
-  insecureTLS?: boolean  // Skip TLS certificate verification
-  signal?: AbortSignal  // Request cancellation
+  proxy?: string // HTTP, HTTPS, or SOCKS proxy URL
+  insecureTLS?: boolean // Skip TLS certificate verification
+  signal?: AbortSignal // Request cancellation
 }
 ```
 
@@ -380,10 +396,10 @@ Core options:
 ```typescript
 interface CuimpOptions {
   descriptor?: CuimpDescriptor
-  path?: string  // Custom path to curl-impersonate binary
-  extraCurlArgs?: string[]  // Global curl arguments applied to all requests
-  logger?: Logger  // Custom logger for binary download/verification messages
-  cookieJar?: boolean | string  // Enable automatic cookie management
+  path?: string // Custom path to curl-impersonate binary
+  extraCurlArgs?: string[] // Global curl arguments applied to all requests
+  logger?: Logger // Custom logger for binary download/verification messages
+  cookieJar?: boolean | string // Enable automatic cookie management
 }
 ```
 
@@ -394,7 +410,7 @@ The `cookieJar` option enables automatic cookie management:
 ```typescript
 // Option 1: Automatic temp file (cleaned up on destroy)
 const client = createCuimpHttp({
-  cookieJar: true
+  cookieJar: true,
 })
 
 // Option 2: Custom file path (persists between runs)
@@ -404,16 +420,17 @@ import path from 'path'
 
 const cookiePath = path.join(os.homedir(), '.cuimp', 'cookies', 'my-cookies.txt')
 const client = createCuimpHttp({
-  cookieJar: cookiePath  // User-specific, secure location
+  cookieJar: cookiePath, // User-specific, secure location
 })
 
 // Option 3: Disabled (default)
 const client = createCuimpHttp({
-  cookieJar: false  // or omit entirely
+  cookieJar: false, // or omit entirely
 })
 ```
 
 **Best Practices for Cookie File Paths:**
+
 - ✅ Use `~/.cuimp/cookies/` (user home directory) - secure, user-specific, consistent with binary storage
 - ✅ Use temp directory for temporary cookies - auto-cleaned
 - ❌ Avoid project root (`./cookies.txt`) - risk of committing sensitive data to git
@@ -437,7 +454,7 @@ jar.setCookie({
   value: 'my_value',
   path: '/',
   secure: true,
-  expires: new Date('2025-12-31')
+  expires: new Date('2025-12-31'),
 })
 
 // Delete a cookie
@@ -473,12 +490,12 @@ const customLogger = {
   info: (...args) => console.log('[INFO]', new Date().toISOString(), ...args),
   warn: (...args) => console.warn('[WARN]', new Date().toISOString(), ...args),
   error: (...args) => console.error('[ERROR]', new Date().toISOString(), ...args),
-  debug: (...args) => console.debug('[DEBUG]', new Date().toISOString(), ...args)
+  debug: (...args) => console.debug('[DEBUG]', new Date().toISOString(), ...args),
 }
 
 const client = createCuimpHttp({
   descriptor: { browser: 'chrome', version: '123' },
-  logger: customLogger
+  logger: customLogger,
 })
 
 // Now all binary download/verification messages will use your custom format
@@ -493,15 +510,19 @@ await client.get('https://api.example.com/data')
 const logEntries = []
 
 const collectingLogger = {
-  info: (...args) => logEntries.push({ level: 'info', timestamp: Date.now(), message: args.join(' ') }),
-  warn: (...args) => logEntries.push({ level: 'warn', timestamp: Date.now(), message: args.join(' ') }),
-  error: (...args) => logEntries.push({ level: 'error', timestamp: Date.now(), message: args.join(' ') }),
-  debug: (...args) => logEntries.push({ level: 'debug', timestamp: Date.now(), message: args.join(' ') })
+  info: (...args) =>
+    logEntries.push({ level: 'info', timestamp: Date.now(), message: args.join(' ') }),
+  warn: (...args) =>
+    logEntries.push({ level: 'warn', timestamp: Date.now(), message: args.join(' ') }),
+  error: (...args) =>
+    logEntries.push({ level: 'error', timestamp: Date.now(), message: args.join(' ') }),
+  debug: (...args) =>
+    logEntries.push({ level: 'debug', timestamp: Date.now(), message: args.join(' ') }),
 }
 
 const client = createCuimpHttp({
   descriptor: { browser: 'firefox' },
-  logger: collectingLogger
+  logger: collectingLogger,
 })
 
 await client.get('https://api.example.com/data')
@@ -515,17 +536,17 @@ By default, cuimp uses `console` for logging.
 
 ## Supported Browsers
 
-| Browser | Versions | Platforms |
-|---------|----------|-----------|
+| Browser | Versions                                                                  | Platforms                      |
+| ------- | ------------------------------------------------------------------------- | ------------------------------ |
 | Chrome  | 99, 100, 101, 104, 107, 110, 116, 119, 120, 123, 124, 131, 133a, 136, 142 | Linux, Windows, macOS, Android |
-| Firefox | 133, 135, 145 | Linux, Windows, macOS |
-| Edge    | 99, 101 | Linux, Windows, macOS |
-| Safari  | 153, 155, 170, 172, 180, 184, 260, 2601 | macOS, iOS |
-| Tor     | 145 | Linux, Windows, macOS |
+| Firefox | 133, 135, 145                                                             | Linux, Windows, macOS          |
+| Edge    | 99, 101                                                                   | Linux, Windows, macOS          |
+| Safari  | 153, 155, 170, 172, 180, 184, 260, 2601                                   | macOS, iOS                     |
+| Tor     | 145                                                                       | Linux, Windows, macOS          |
 
 ## Response Format
 
-All HTTP methods return a standardized response:
+All HTTP methods return a standardized response. **Important**: Unlike traditional curl behavior, cuimp returns response objects for all HTTP status codes (including 4xx/5xx), allowing you to access error response bodies, headers, and status information. Only network errors (connection failures, DNS errors, etc.) throw exceptions.
 
 ```typescript
 interface CuimpResponse<T = any> {
@@ -559,7 +580,7 @@ console.log(users.data)
 // POST request
 const newUser = await post('https://jsonplaceholder.typicode.com/users', {
   name: 'John Doe',
-  email: 'john@example.com'
+  email: 'john@example.com',
 })
 ```
 
@@ -569,7 +590,7 @@ const newUser = await post('https://jsonplaceholder.typicode.com/users', {
 import { createCuimpHttp } from 'cuimp'
 
 const client = createCuimpHttp({
-  descriptor: { browser: 'chrome', version: '123' }
+  descriptor: { browser: 'chrome', version: '123' },
 })
 
 // Set default headers
@@ -585,13 +606,65 @@ const response = await client.get('/api/users')
 import { Cuimp } from 'cuimp'
 
 const cuimp = new Cuimp({
-  path: '/usr/local/bin/curl-impersonate'
+  path: '/usr/local/bin/curl-impersonate',
 })
 
 const info = await cuimp.verifyBinary()
 ```
 
+### Handling 4xx/5xx Error Responses
+
+```javascript
+import { get, post } from 'cuimp'
+
+// 4xx/5xx responses return response objects (not thrown)
+const response = await get('https://httpbin.org/status/404')
+
+if (response.status === 404) {
+  console.log('Resource not found:', response.data)
+} else if (response.status >= 500) {
+  console.error('Server error:', response.statusText)
+  console.error('Error details:', response.data)
+} else if (response.status >= 400) {
+  console.warn('Client error:', response.status, response.statusText)
+}
+
+// Handle JSON error responses
+const errorResponse = await post('https://api.example.com/users', {
+  email: 'invalid-email',
+})
+
+if (errorResponse.status === 400) {
+  // Access the error body (parsed JSON if Content-Type is application/json)
+  const errorData = errorResponse.data
+  console.log('Validation errors:', errorData.errors)
+  console.log('Error message:', errorData.message)
+}
+```
+
 ### Error Handling
+
+**4xx/5xx Responses**: Unlike traditional curl behavior, cuimp returns full response objects for HTTP error status codes (4xx/5xx), similar to axios and Postman. This allows you to access error response bodies, headers, and status information.
+
+```javascript
+import { get } from 'cuimp'
+
+// 4xx/5xx responses return response objects (not thrown)
+const response = await get('https://httpbin.org/status/404')
+console.log('Status:', response.status) // 404
+console.log('Status Text:', response.statusText) // 'Not Found'
+console.log('Body:', response.data) // Response body (if any)
+console.log('Headers:', response.headers) // Response headers
+
+// Check status and handle accordingly
+if (response.status >= 400) {
+  console.error(`Error ${response.status}:`, response.data)
+} else {
+  console.log('Success:', response.data)
+}
+```
+
+**Network Errors**: Network errors (connection failures, DNS errors, etc.) are still thrown as exceptions:
 
 ```javascript
 import { get } from 'cuimp'
@@ -601,9 +674,9 @@ try {
   console.log(response.data)
 } catch (error) {
   if (error.code === 'ENOTFOUND') {
-    console.log('Network error')
-  } else if (error.status) {
-    console.log(`HTTP ${error.status}: ${error.statusText}`)
+    console.log('Network error: DNS resolution failed')
+  } else if (error.code === 'ECONNREFUSED') {
+    console.log('Network error: Connection refused')
   } else {
     console.log('Unknown error:', error.message)
   }
@@ -694,17 +767,19 @@ export all_proxy=socks5://proxy.example.com:1080
 ### Common Issues
 
 **Q: Binary download fails**
+
 ```bash
 # Check your internet connection and try again
 # The binary will be downloaded to node_modules/cuimp/binaries/
 ```
 
 **Q: Proxy not working**
+
 ```javascript
 // Make sure your proxy URL is correct
 const response = await request({
   url: 'https://httpbin.org/ip',
-  proxy: 'http://username:password@proxy.example.com:8080'
+  proxy: 'http://username:password@proxy.example.com:8080',
 })
 
 // Or set environment variables
@@ -712,12 +787,14 @@ process.env.HTTP_PROXY = 'http://proxy.example.com:8080'
 ```
 
 **Q: Permission denied errors**
+
 ```bash
 # On Unix systems, make sure the binary has execute permissions
 chmod +x node_modules/cuimp/binaries/curl-impersonate
 ```
 
 **Q: Binary not found**
+
 ```javascript
 // Force re-download by clearing the binaries directory
 rm -rf node_modules/cuimp/binaries/

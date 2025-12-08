@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { 
-  Cuimp, 
-  CuimpHttp, 
+import {
+  Cuimp,
+  CuimpHttp,
   createCuimpHttp,
   request,
   get,
@@ -10,7 +10,7 @@ import {
   patch,
   del,
   head,
-  options
+  options,
 } from '../src/index'
 
 describe('API Tests', () => {
@@ -24,7 +24,7 @@ describe('API Tests', () => {
     it('should create instance with custom options', () => {
       const options = {
         descriptor: { browser: 'chrome', version: '123' },
-        path: '/custom/path'
+        path: '/custom/path',
       }
       const cuimp = new Cuimp(options)
       expect(cuimp.getDescriptor()).toEqual(options.descriptor)
@@ -33,10 +33,10 @@ describe('API Tests', () => {
 
     it('should handle descriptor updates', () => {
       const cuimp = new Cuimp()
-      
+
       cuimp.setDescriptor({ browser: 'chrome', version: '123' })
       expect(cuimp.getDescriptor()).toEqual({ browser: 'chrome', version: '123' })
-      
+
       cuimp.setBinaryPath('/custom/path')
       expect(cuimp.getBinaryPath()).toBe('/custom/path')
     })
@@ -65,7 +65,7 @@ describe('API Tests', () => {
   describe('Factory function', () => {
     it('should create HTTP client with options', () => {
       const client = createCuimpHttp({
-        descriptor: { browser: 'chrome' }
+        descriptor: { browser: 'chrome' },
       })
       expect(client).toBeInstanceOf(CuimpHttp)
     })
@@ -96,7 +96,7 @@ describe('API Tests', () => {
         name: string
         email: string
       }
-      
+
       // These should compile without errors
       const client = createCuimpHttp()
       const promise: Promise<any> = client.get<User>('https://api.example.com/users/123')
