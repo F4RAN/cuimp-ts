@@ -827,10 +827,11 @@ When running cuimp inside a Docker container, you may encounter the following er
 This occurs because the container does not have access to the required CA certificates.  
 To fix this, mount your host machine’s certificate directory into the container, for example:
 
-```docker-compose
+```yaml
 volumes:
   - /etc/ssl/certs:/etc/ssl/certs:ro
 ```
+
 This ensures cuimp can properly verify TLS certificates inside the container.
 
 ## 📄 License
