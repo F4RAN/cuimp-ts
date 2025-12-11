@@ -816,6 +816,24 @@ const binaryPath = await cuimp.verifyBinary()
 console.log('Binary path:', binaryPath)
 ```
 
+### Docker
+
+#### Error: “error setting certificate verify locations”
+
+When running cuimp inside a Docker container, you may encounter the following error:
+
+`error setting certificate verify locations: CAfile: /etc/ssl/certs/ca-certificates.crt CApath: /etc/ssl/certs`
+
+This occurs because the container does not have access to the required CA certificates.  
+To fix this, mount your host machine’s certificate directory into the container, for example:
+
+```yaml
+volumes:
+  - /etc/ssl/certs:/etc/ssl/certs:ro
+```
+
+This ensures cuimp can properly verify TLS certificates inside the container.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
