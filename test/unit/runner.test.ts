@@ -591,7 +591,7 @@ describe('runBinary', () => {
       await runBinary(pathWithQuotes, ['-X', 'GET', 'https://example.com'])
 
       // Verify quotes were removed, path normalized, then re-quoted if needed
-      const unquotedPath = pathWithQuotes.replace(/^["']|["']$/g, '')
+      const unquotedPath = pathWithQuotes.replace(/^["']+/, '').replace(/["']+$/, '')
       const normalizedPath = path.win32.normalize(unquotedPath)
       // Path has quotes in the middle, so it will be quoted
       const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
@@ -797,7 +797,7 @@ describe('runBinary', () => {
         await runBinary(pathWithQuotes, ['-X', 'GET', 'https://example.com'])
 
         // Verify quotes were removed, path was normalized, and NOT re-quoted (no spaces)
-        const unquotedPath = pathWithQuotes.replace(/^["']|["']$/g, '')
+        const unquotedPath = pathWithQuotes.replace(/^["']+/, '').replace(/["']+$/, '')
         const normalizedPath = path.win32.normalize(unquotedPath)
         // Path doesn't have spaces, so it shouldn't be quoted
         expect(mockSpawn).toHaveBeenCalledWith(

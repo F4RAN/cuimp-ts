@@ -15,7 +15,8 @@ export function runBinary(
 
     // Remove any existing quotes first to properly detect .bat files
     // This handles cases where paths are incorrectly quoted before being passed in
-    const cleanPath = binPath.replace(/^["']|["']$/g, '')
+    // Use two separate replacements to ensure all leading and trailing quotes are removed
+    const cleanPath = binPath.replace(/^["']+/, '').replace(/["']+$/, '')
     const isBatFile = cleanPath.toLowerCase().endsWith('.bat')
     const needsShell = isWindows && isBatFile
 
