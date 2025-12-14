@@ -12,7 +12,7 @@ export function runBinary(
   return new Promise((resolve, reject) => {
     // On Windows, .bat files need shell: true to execute properly
     const isWindows = process.platform === 'win32'
-    
+
     // Remove any existing quotes first to properly detect .bat files
     // This handles cases where paths are incorrectly quoted before being passed in
     let cleanPath = binPath.replace(/^["']|["']$/g, '')
@@ -36,11 +36,11 @@ export function runBinary(
     if (needsShell) {
       // Normalize the path: resolve relative paths and normalize separators
       let normalizedPath = cleanPath
-      
+
       // Check if it's a Windows absolute path (drive letter like D:\ or D:/)
       // This check works even when running on non-Windows systems
       const isWindowsAbsolutePath = /^[A-Za-z]:[\\/]/.test(normalizedPath)
-      
+
       // Resolve to absolute path if it's relative (not Windows absolute path)
       if (!isWindowsAbsolutePath && !path.isAbsolute(normalizedPath)) {
         normalizedPath = path.resolve(normalizedPath)
@@ -53,7 +53,7 @@ export function runBinary(
           normalizedPath = path.normalize(normalizedPath)
         }
       }
-      
+
       binPath = normalizedPath
     }
 
@@ -71,7 +71,7 @@ export function runBinary(
     }
 
     // Quote binPath if it contains shell metacharacters (after normalization)
-    if (needsShell && /[&|<>^"\s]/.test(binPath)){
+    if (needsShell && /[&|<>^"\s]/.test(binPath)) {
       binPath = binPath.replace(/"/g, '\\"')
       binPath = `"${binPath}"`
     }
