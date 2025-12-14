@@ -40,13 +40,17 @@ async function main() {
     console.log('   Note: The path contains spaces, which requires proper quoting on Windows.')
     console.log()
 
-    // Create Cuimp instance with custom path
-    const cuimp = new Cuimp({
+    // Create HTTP client with custom path
+    // Note: createCuimpHttp expects CuimpOptions, not a Cuimp instance
+    const cuimpOptions = {
       path: customPathWithSpaces
-    })
+    }
+    const http = createCuimpHttp(cuimpOptions)
 
     // Try to verify the binary (this will fail if the path doesn't exist, but demonstrates usage)
     try {
+      // Access the internal Cuimp instance to verify the binary
+      const cuimp = new Cuimp(cuimpOptions)
       const verifiedPath = await cuimp.verifyBinary()
       console.log(`   ✅ Binary verified at: ${verifiedPath}`)
       console.log('   The path is properly quoted when passed to spawn() on Windows.')
@@ -54,7 +58,6 @@ async function main() {
 
       // Make a request using the custom path
       console.log('2. Making HTTP request with custom path...')
-      const http = createCuimpHttp(cuimp)
       
       try {
         const response = await http.get('https://httpbin.org/get')

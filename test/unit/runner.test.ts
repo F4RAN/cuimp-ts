@@ -594,7 +594,8 @@ describe('runBinary', () => {
       const unquotedPath = pathWithQuotes.replace(/^["']+/, '').replace(/["']+$/, '')
       const normalizedPath = path.win32.normalize(unquotedPath)
       // Path has quotes in the middle, so it will be quoted
-      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
+      // Windows CMD uses "" to escape quotes inside double quotes
+      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '""')}"`
       expect(mockSpawn).toHaveBeenCalledWith(
         expectedQuotedPath,
         expect.any(Array),
@@ -932,6 +933,265 @@ describe('runBinary', () => {
             shell: true,
           })
         )
+      })
+    })
+
+    describe('Windows argument escaping', () => {
+      const originalPlatform = process.platform
+
+      afterEach(() => {
+        restorePlatform(originalPlatform)
+      })
+
+      it('should properly escape & character in arguments for Windows CMD', async () => {
+        if (!mockPlatform('win32')) {
+          return
+        }
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        const binPath = 'D:\\binaries\\curl_edge101.bat'
+        const argsWithAmpersand = ['--data-binary', 'pass@&sample', 'https://example.com']
+        await runBinary(binPath, argsWithAmpersand)
+
+        // Verify spawn was called with properly quoted arguments
+        const spawnCall = mockSpawn.mock.calls[0]
+        const spawnedArgs = spawnCall[1] as string[]
+
+        // The argument with & should be quoted
+        expect(spawnedArgs).toContain('"pass@&sample"')
+        // Verify the & is inside quotes (not escaped with backslash)
+        const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
+        expect(spawnedArgs[dataBinaryIndex + 1]).toBe('"pass@&sample"')
+      })
+
+      it('should properly escape double quotes in arguments for Windows CMD', async () => {
+        if (!mockPlatform('win32')) {
+          return
+        }
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        const binPath = 'D:\\binaries\\curl_edge101.bat'
+        const argsWithQuote = ['--data-binary', 'P!ngpass123"test', 'https://example.com']
+        await runBinary(binPath, argsWithQuote)
+
+        // Verify spawn was called with properly escaped quotes
+        // Windows CMD uses "" to escape quotes inside double quotes
+        const spawnCall = mockSpawn.mock.calls[0]
+        const spawnedArgs = spawnCall[1] as string[]
+
+        // The argument with quote should be quoted and use "" escaping
+        const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
+        const escapedArg = spawnedArgs[dataBinaryIndex + 1]
+        expect(escapedArg).toContain('""')
+        // Should be: "P!ngpass123""test"
+        expect(escapedArg).toBe('"P!ngpass123""test"')
+      })
+
+      it('should handle both & and " characters in same argument', async () => {
+        if (!mockPlatform('win32')) {
+          return
+        }
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        const binPath = 'D:\\binaries\\curl_edge101.bat'
+        const argsWithBoth = ['--data-binary', 'user&pass"test', 'https://example.com']
+        await runBinary(binPath, argsWithBoth)
+
+        // Verify spawn was called with properly escaped argument
+        const spawnCall = mockSpawn.mock.calls[0]
+        const spawnedArgs = spawnCall[1] as string[]
+
+        const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
+        const escapedArg = spawnedArgs[dataBinaryIndex + 1]
+        // Should be quoted (because of &) and use "" for quote escaping
+        expect(escapedArg).toMatch(/^".*"$/) // Starts and ends with quotes
+        expect(escapedArg).toContain('""') // Uses "" for quote escaping
+        expect(escapedArg).toContain('&') // Contains & inside quotes
+      })
+
+      it('should quote arguments containing % character (variable expansion)', async () => {
+        if (!mockPlatform('win32')) {
+          return
+        }
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        const binPath = 'D:\\binaries\\curl_edge101.bat'
+        const argsWithPercent = ['--data-binary', 'discount50%off', 'https://example.com']
+        await runBinary(binPath, argsWithPercent)
+
+        // Verify spawn was called with quoted argument
+        const spawnCall = mockSpawn.mock.calls[0]
+        const spawnedArgs = spawnCall[1] as string[]
+
+        const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
+        const escapedArg = spawnedArgs[dataBinaryIndex + 1]
+        // Should be quoted to prevent % from triggering variable expansion
+        expect(escapedArg).toBe('"discount50%off"')
+      })
+
+      it('should quote arguments containing ! character (delayed expansion)', async () => {
+        if (!mockPlatform('win32')) {
+          return
+        }
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        const binPath = 'D:\\binaries\\curl_edge101.bat'
+        const argsWithExclamation = ['--data-binary', 'Hello, World!', 'https://example.com']
+        await runBinary(binPath, argsWithExclamation)
+
+        // Verify spawn was called with quoted argument
+        const spawnCall = mockSpawn.mock.calls[0]
+        const spawnedArgs = spawnCall[1] as string[]
+
+        const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
+        const escapedArg = spawnedArgs[dataBinaryIndex + 1]
+        // Should be quoted to prevent ! from triggering delayed variable expansion
+        expect(escapedArg).toBe('"Hello, World!"')
+      })
+
+      it('should handle multiple special characters together', async () => {
+        if (!mockPlatform('win32')) {
+          return
+        }
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        const binPath = 'D:\\binaries\\curl_edge101.bat'
+        // Contains: &, ", %, !, and space
+        const argsWithMultiple = ['--data-binary', 'user&pass"test50%off!', 'https://example.com']
+        await runBinary(binPath, argsWithMultiple)
+
+        // Verify spawn was called with properly escaped argument
+        const spawnCall = mockSpawn.mock.calls[0]
+        const spawnedArgs = spawnCall[1] as string[]
+
+        const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
+        const escapedArg = spawnedArgs[dataBinaryIndex + 1]
+        // Should be quoted and use "" for quote escaping
+        expect(escapedArg).toMatch(/^".*"$/) // Starts and ends with quotes
+        expect(escapedArg).toContain('""') // Uses "" for quote escaping
+        expect(escapedArg).toContain('&') // Contains & inside quotes
+        expect(escapedArg).toContain('%') // Contains % inside quotes
+        expect(escapedArg).toContain('!') // Contains ! inside quotes
       })
     })
   })

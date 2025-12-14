@@ -65,21 +65,27 @@ export function runBinary(
     }
 
     // When using shell: true on Windows, we need to properly quote arguments
-    // to prevent & and other shell metacharacters from being interpreted
+    // to prevent shell metacharacters from being interpreted by CMD
+    // Characters that need quoting:
+    // - & | < > ^ : command operators and redirection
+    // - " : quotes (escaped as "" inside quotes)
+    // - % ! : variable expansion (even inside quotes if enabled)
+    // - \s : whitespace (path/argument separators)
     if (needsShell) {
       finalArgs = finalArgs.map(arg => {
         // If arg contains shell metacharacters, wrap in double quotes
-        // and escape any existing double quotes
-        if (/[&|<>^"\s]/.test(arg)) {
-          return `"${arg.replace(/"/g, '\\"')}"`
+        // and escape any existing double quotes using Windows CMD syntax ("" not \")
+        if (/[&|<>^"%!\s]/.test(arg)) {
+          return `"${arg.replace(/"/g, '""')}"` // Correct for Windows CMD
         }
         return arg
       })
     }
 
     // Quote binPath if it contains shell metacharacters (after normalization)
-    if (needsShell && /[&|<>^"\s]/.test(binPath)) {
-      binPath = binPath.replace(/"/g, '\\"')
+    // Use same character set as argument quoting for consistency
+    if (needsShell && /[&|<>^"%!\s]/.test(binPath)) {
+      binPath = binPath.replace(/"/g, '""')
       binPath = `"${binPath}"`
     }
 
