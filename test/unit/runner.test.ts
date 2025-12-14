@@ -1072,6 +1072,66 @@ describe('runBinary', () => {
         expect(escapedArg).toContain('&') // Contains & inside quotes
       })
 
+      it('should properly escape backslashes before quotes in JSON data', async () => {
+        if (!mockPlatform('win32')) {
+          return
+        }
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        const binPath = 'D:\\binaries\\curl_edge101.bat'
+        // Simulate kenmadev's exact example:
+        // request.post('https://example.com/login', {
+        //   username: "username123"
+        //   password: `P!ngpass123"test`  // literal quote in password
+        // })
+        // JSON.stringify produces: {"username":"username123","password":"P!ngpass123\"test"}
+        const jsonData = JSON.stringify({
+          username: 'username123',
+          password: 'P!ngpass123"test', // literal quote
+        })
+        const argsWithJsonQuote = ['--data-binary', jsonData, 'https://example.com']
+        await runBinary(binPath, argsWithJsonQuote)
+
+        // Verify spawn was called with properly escaped argument
+        const spawnCall = mockSpawn.mock.calls[0]
+        const spawnedArgs = spawnCall[1] as string[]
+
+        const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
+        const escapedArg = spawnedArgs[dataBinaryIndex + 1]
+        // Should be quoted (because of quotes in JSON)
+        expect(escapedArg).toMatch(/^".*"$/) // Starts and ends with quotes
+        // The backslash before quote should be doubled: \" becomes \\"
+        // Then quotes are escaped: " becomes ""
+        // So \" becomes \\""
+        expect(escapedArg).toContain('\\\\""') // Backslash before quote is doubled, then quote is escaped
+        // Should contain the JSON structure with proper escaping
+        expect(escapedArg).toContain('username')
+        expect(escapedArg).toContain('password')
+        expect(escapedArg).toContain('username123')
+        // The password value should be properly escaped
+        expect(escapedArg).toContain('P!ngpass123')
+      })
+
       it('should quote arguments containing % character (variable expansion)', async () => {
         if (!mockPlatform('win32')) {
           return

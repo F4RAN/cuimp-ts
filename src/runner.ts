@@ -76,7 +76,13 @@ export function runBinary(
         // If arg contains shell metacharacters, wrap in double quotes
         // and escape any existing double quotes using Windows CMD syntax ("" not \")
         if (/[&|<>^"%!\s]/.test(arg)) {
-          return `"${arg.replace(/"/g, '""')}"` // Correct for Windows CMD
+          // First escape backslashes that appear before quotes (for JSON escape sequences like \")
+          // In Windows CMD, a backslash before a quote inside a quoted string must be doubled
+          // to prevent the quote from being interpreted as ending the quoted string
+          let escaped = arg.replace(/\\"/g, '\\\\"')
+          // Then escape all remaining quotes using Windows CMD syntax ("" not \")
+          escaped = escaped.replace(/"/g, '""')
+          return `"${escaped}"`
         }
         return arg
       })
@@ -84,6 +90,8 @@ export function runBinary(
 
     // Quote binPath if it contains shell metacharacters (after normalization)
     // Use same character set as argument quoting for consistency
+    // Note: We don't double backslashes before quotes in paths (unlike arguments)
+    // because backslashes in paths are path separators, not escape sequences
     if (needsShell && /[&|<>^"%!\s]/.test(binPath)) {
       binPath = binPath.replace(/"/g, '""')
       binPath = `"${binPath}"`
