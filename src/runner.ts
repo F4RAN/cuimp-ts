@@ -71,7 +71,7 @@ export function runBinary(
     if (needsShell) {
       finalArgs = finalArgs.map(arg => {
         if (/[&|<>^"%!\s]/.test(arg)) {
-          let escaped = arg.replace(/"/g, '""')
+          const escaped = arg.replace(/"/g, '""')
           return `"${escaped}"`
         }
         return arg
