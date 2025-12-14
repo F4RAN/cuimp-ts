@@ -27,6 +27,24 @@ export function runBinary(
       }
     }
 
+    // When using shell: true on Windows, normalize the path first
+    // This handles forward slashes, relative paths, and ensures proper formatting
+    if (needsShell) {
+      // Normalize the path: resolve relative paths and normalize separators
+      // Remove any existing quotes first (they might have been added incorrectly)
+      let normalizedPath = binPath.replace(/^["']|["']$/g, '')
+      
+      // Resolve to absolute path if it's relative
+      if (!path.isAbsolute(normalizedPath)) {
+        normalizedPath = path.resolve(normalizedPath)
+      } else {
+        // Normalize absolute paths (handles forward/back slashes on Windows)
+        normalizedPath = path.normalize(normalizedPath)
+      }
+      
+      binPath = normalizedPath
+    }
+
     // When using shell: true on Windows, we need to properly quote arguments
     // to prevent & and other shell metacharacters from being interpreted
     if (needsShell) {
@@ -40,6 +58,7 @@ export function runBinary(
       })
     }
 
+    // Quote binPath if it contains shell metacharacters (after normalization)
     if (needsShell && /[&|<>^"\s]/.test(binPath)){
       binPath = binPath.replace(/"/g, '\\"')
       binPath = `"${binPath}"`
