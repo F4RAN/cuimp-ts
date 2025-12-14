@@ -1118,18 +1118,44 @@ describe('runBinary', () => {
 
         const dataBinaryIndex = spawnedArgs.indexOf('--data-binary')
         const escapedArg = spawnedArgs[dataBinaryIndex + 1]
+
         // Should be quoted (because of quotes in JSON)
         expect(escapedArg).toMatch(/^".*"$/) // Starts and ends with quotes
-        // The backslash before quote should be doubled: \" becomes \\"
+
+        // Critical: The backslash before quote should be doubled: \" becomes \\"
         // Then quotes are escaped: " becomes ""
         // So \" becomes \\""
+        // This is required for Windows CMD to correctly interpret JSON escape sequences
         expect(escapedArg).toContain('\\\\""') // Backslash before quote is doubled, then quote is escaped
+
+        // Verify the exact escaping for kenmadev's issue:
+        // Original JSON: {"password":"P!ngpass123\"test"}
+        // After escaping: {""password"":""P!ngpass123\\""test""}
+        // The \\"" sequence is critical - without it, Windows CMD would misinterpret the quote
+        // Check the entire escaped argument contains the properly escaped sequence
+        // The escapedArg is wrapped in quotes, so we check the inner content
+        const innerContent = escapedArg.slice(1, -1) // Remove outer quotes
+
+        // Verify critical parts exist
+        expect(innerContent).toContain('password"":""P!ngpass123')
+        expect(innerContent).toContain('\\\\""test""') // Must have double backslash + double quote before "test"
+
+        // Verify the exact pattern: password"":""P!ngpass123\\""test""
+        // Note: In the regex, we need to escape the backslashes properly
+        // The string contains: password"":""P!ngpass123\\""test""
+        // In regex: password"":""P!ngpass123\\\\""test""
+        // (Each \ in the string needs to be \\ in the regex)
+        const passwordPattern = /password"":""P!ngpass123\\\\""test""/
+        expect(innerContent).toMatch(passwordPattern)
+
         // Should contain the JSON structure with proper escaping
         expect(escapedArg).toContain('username')
         expect(escapedArg).toContain('password')
         expect(escapedArg).toContain('username123')
-        // The password value should be properly escaped
-        expect(escapedArg).toContain('P!ngpass123')
+
+        // Verify it's valid JSON when Windows CMD processes it
+        // Windows CMD will interpret: "" as ", \\ as \, so \\"" becomes \"
+        // This matches what JSON.stringify produced: \" (backslash + quote)
       })
 
       it('should quote arguments containing % character (variable expansion)', async () => {
