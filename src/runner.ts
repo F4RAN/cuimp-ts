@@ -40,6 +40,11 @@ export function runBinary(
       })
     }
 
+    if (needsShell && /[&|<>^"\s]/.test(binPath)){
+      binPath = binPath.replace(/"/g, '\\"')
+      binPath = `"${binPath}"`
+    }
+
     const child = spawn(binPath, finalArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: needsShell,

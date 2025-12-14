@@ -378,4 +378,238 @@ describe('runBinary', () => {
     // Should not have called kill due to timeout
     expect(mockChildProcess.kill).not.toHaveBeenCalled()
   })
+
+  describe('Windows path quoting', () => {
+    const originalPlatform = process.platform
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: originalPlatform })
+    })
+
+    it('should quote Windows .bat path with spaces when shell is needed', async () => {
+      // Mock Windows platform
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+
+      const mockStdout = Buffer.from('output')
+      const mockStderr = Buffer.from('')
+
+      mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'close') {
+          setTimeout(() => callback(0), 10)
+        }
+      })
+
+      mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStdout), 5)
+        }
+      })
+
+      mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStderr), 5)
+        }
+      })
+
+      const pathWithSpaces = 'D:\\Users\\Active PC\\cuimp\\binaries\\curl_edge101.bat'
+      await runBinary(pathWithSpaces, ['-X', 'GET', 'https://example.com'])
+
+      // Verify spawn was called with quoted path and shell: true
+      expect(mockSpawn).toHaveBeenCalledWith(
+        `"${pathWithSpaces.replace(/"/g, '\\"')}"`,
+        expect.any(Array),
+        expect.objectContaining({
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: true,
+        })
+      )
+    })
+
+    it('should quote Windows .bat path with other shell metacharacters', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+
+      const mockStdout = Buffer.from('output')
+      const mockStderr = Buffer.from('')
+
+      mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'close') {
+          setTimeout(() => callback(0), 10)
+        }
+      })
+
+      mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStdout), 5)
+        }
+      })
+
+      mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStderr), 5)
+        }
+      })
+
+      const pathWithAmpersand = 'D:\\Users\\Test&Dev\\cuimp\\binaries\\curl_edge101.bat'
+      await runBinary(pathWithAmpersand, ['-X', 'GET', 'https://example.com'])
+
+      // Verify path was quoted
+      expect(mockSpawn).toHaveBeenCalledWith(
+        `"${pathWithAmpersand.replace(/"/g, '\\"')}"`,
+        expect.any(Array),
+        expect.objectContaining({
+          shell: true,
+        })
+      )
+    })
+
+    it('should not quote Windows .bat path without spaces or metacharacters', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+
+      const mockStdout = Buffer.from('output')
+      const mockStderr = Buffer.from('')
+
+      mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'close') {
+          setTimeout(() => callback(0), 10)
+        }
+      })
+
+      mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStdout), 5)
+        }
+      })
+
+      mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStderr), 5)
+        }
+      })
+
+      const pathWithoutSpaces = 'D:\\Users\\ActivePC\\cuimp\\binaries\\curl_edge101.bat'
+      await runBinary(pathWithoutSpaces, ['-X', 'GET', 'https://example.com'])
+
+      // Verify path was NOT quoted (no spaces/metacharacters)
+      expect(mockSpawn).toHaveBeenCalledWith(
+        pathWithoutSpaces,
+        expect.any(Array),
+        expect.objectContaining({
+          shell: true,
+        })
+      )
+    })
+
+    it('should escape existing quotes in Windows .bat path', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+
+      const mockStdout = Buffer.from('output')
+      const mockStderr = Buffer.from('')
+
+      mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'close') {
+          setTimeout(() => callback(0), 10)
+        }
+      })
+
+      mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStdout), 5)
+        }
+      })
+
+      mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStderr), 5)
+        }
+      })
+
+      const pathWithQuotes = 'D:\\Users\\"Test"\\cuimp\\binaries\\curl_edge101.bat'
+      await runBinary(pathWithQuotes, ['-X', 'GET', 'https://example.com'])
+
+      // Verify quotes were escaped
+      const expectedQuotedPath = `"${pathWithQuotes.replace(/"/g, '\\"')}"`
+      expect(mockSpawn).toHaveBeenCalledWith(
+        expectedQuotedPath,
+        expect.any(Array),
+        expect.objectContaining({
+          shell: true,
+        })
+      )
+    })
+
+    it('should not quote non-Windows paths even with spaces', async () => {
+      // Mock non-Windows platform
+      Object.defineProperty(process, 'platform', { value: 'linux' })
+
+      const mockStdout = Buffer.from('output')
+      const mockStderr = Buffer.from('')
+
+      mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'close') {
+          setTimeout(() => callback(0), 10)
+        }
+      })
+
+      mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStdout), 5)
+        }
+      })
+
+      mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStderr), 5)
+        }
+      })
+
+      const pathWithSpaces = '/usr/local/bin/Active PC/curl-impersonate'
+      await runBinary(pathWithSpaces, ['-X', 'GET', 'https://example.com'])
+
+      // Verify path was NOT quoted (not Windows, not .bat)
+      expect(mockSpawn).toHaveBeenCalledWith(
+        pathWithSpaces,
+        expect.any(Array),
+        expect.objectContaining({
+          shell: false,
+        })
+      )
+    })
+
+    it('should not quote Windows .exe path (not .bat)', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+
+      const mockStdout = Buffer.from('output')
+      const mockStderr = Buffer.from('')
+
+      mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'close') {
+          setTimeout(() => callback(0), 10)
+        }
+      })
+
+      mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStdout), 5)
+        }
+      })
+
+      mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+        if (event === 'data') {
+          setTimeout(() => callback(mockStderr), 5)
+        }
+      })
+
+      const exePathWithSpaces = 'D:\\Users\\Active PC\\cuimp\\binaries\\curl_edge101.exe'
+      await runBinary(exePathWithSpaces, ['-X', 'GET', 'https://example.com'])
+
+      // Verify path was NOT quoted (not .bat, so shell: false)
+      expect(mockSpawn).toHaveBeenCalledWith(
+        exePathWithSpaces,
+        expect.any(Array),
+        expect.objectContaining({
+          shell: false,
+        })
+      )
+    })
+  })
 })
