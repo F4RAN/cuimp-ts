@@ -41,10 +41,15 @@ export function runBinary(
       // This check works even when running on non-Windows systems
       const isWindowsAbsolutePath = /^[A-Za-z]:[\\/]/.test(normalizedPath)
 
-      // Resolve to absolute path if it's relative (not Windows absolute path)
-      if (!isWindowsAbsolutePath && !path.isAbsolute(normalizedPath)) {
+      // Only resolve relative paths that contain directory separators
+      // Bare filenames (like "curl_edge101.bat") should be left for PATH resolution
+      const hasPathSeparator = /[\\/]/.test(normalizedPath)
+
+      if (!isWindowsAbsolutePath && !path.isAbsolute(normalizedPath) && hasPathSeparator) {
+        // This is a relative path with directory separators (e.g., "./binaries/curl_edge101.bat")
+        // Resolve it to an absolute path
         normalizedPath = path.resolve(normalizedPath)
-      } else {
+      } else if (isWindowsAbsolutePath || path.isAbsolute(normalizedPath)) {
         // Normalize absolute paths (handles forward/back slashes on Windows)
         // Use path.win32.normalize for Windows paths to ensure proper handling
         if (isWindowsAbsolutePath) {
@@ -53,6 +58,7 @@ export function runBinary(
           normalizedPath = path.normalize(normalizedPath)
         }
       }
+      // If it's a bare filename (no path separators), leave it as-is for PATH resolution
 
       binPath = normalizedPath
     }
