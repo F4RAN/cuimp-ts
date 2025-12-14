@@ -72,18 +72,31 @@ async function main() {
     }
     console.log()
 
-    // Example 2: Path without spaces (should work normally)
-    console.log('3. Using path without spaces (for comparison)...')
+    // Example 2: Path without spaces but with forward slashes (second scenario)
+    console.log('3. Using path with forward slashes (second scenario fix)...')
+    // Windows paths can be provided with forward slashes, which need normalization
+    const pathWithForwardSlashes = isWindows
+      ? 'D:/Users/ActivePC/cuimp/binaries/curl_edge101.bat'
+      : '/usr/local/bin/curl-impersonate'
+
+    console.log(`   Path with forward slashes: ${pathWithForwardSlashes}`)
+    console.log('   Note: On Windows, forward slashes are normalized to backslashes.')
+    console.log('   This fixes the "no URL specified" and "path not found" errors.')
+    console.log()
+
+    // Example 3: Path without spaces (should work normally)
+    console.log('4. Using path without spaces (for comparison)...')
     const pathWithoutSpaces = isWindows
       ? path.join(os.homedir(), '.cuimp', 'binaries', 'curl_edge101.bat')
       : path.join(os.homedir(), '.cuimp', 'binaries', 'curl-impersonate')
 
     console.log(`   Path without spaces: ${pathWithoutSpaces}`)
-    console.log('   This path doesn\'t require quoting.')
+    console.log('   This path doesn\'t require quoting, but still gets normalized.')
     console.log()
 
-    // Example 3: Demonstrate the fix
-    console.log('4. Technical Details:')
+    // Example 4: Demonstrate the fixes
+    console.log('5. Technical Details:')
+    console.log('   Scenario 1 - Paths with spaces:')
     console.log('   Before the fix:')
     console.log('   - Paths with spaces were not quoted')
     console.log('   - Windows CMD would split "D:\\Users\\Active PC\\..." into:')
@@ -97,13 +110,29 @@ async function main() {
     console.log('   - Windows CMD treats it as a single command path')
     console.log('   - Existing quotes in paths are properly escaped')
     console.log()
+    console.log('   Scenario 2 - Paths without spaces but with issues:')
+    console.log('   Before the fix:')
+    console.log('   - Paths with forward slashes (D:/Users/...) were not normalized')
+    console.log('   - Relative paths were not resolved to absolute')
+    console.log('   - This caused: "no URL specified" and "path not found" errors')
+    console.log()
+    console.log('   After the fix:')
+    console.log('   - Forward slashes are normalized to backslashes on Windows')
+    console.log('   - Relative paths are resolved to absolute paths')
+    console.log('   - Paths are normalized before being passed to spawn()')
+    console.log('   - This ensures Windows CMD can find and execute the binary')
+    console.log()
 
     console.log('✅ Windows paths with spaces example completed!')
     console.log()
-    console.log('Key takeaway:')
-    console.log('  When using custom paths on Windows, especially with spaces,')
-    console.log('  cuimp now automatically handles proper quoting for .bat files.')
-    console.log('  This fix resolves issue #25 (UNSUPPORTED_PROTOCOL errors).')
+    console.log('Key takeaways:')
+    console.log('  1. Paths with spaces are automatically quoted for .bat files')
+    console.log('  2. Forward slashes are normalized to backslashes on Windows')
+    console.log('  3. Relative paths are resolved to absolute paths')
+    console.log('  4. Existing quotes are properly escaped')
+    console.log()
+    console.log('  These fixes resolve issue #25 (UNSUPPORTED_PROTOCOL errors)')
+    console.log('  for both scenarios: paths with spaces and paths without spaces.')
   } catch (error) {
     console.error('❌ Error:', error.message)
     if (error.code) {

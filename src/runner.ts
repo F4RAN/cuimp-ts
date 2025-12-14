@@ -12,14 +12,18 @@ export function runBinary(
   return new Promise((resolve, reject) => {
     // On Windows, .bat files need shell: true to execute properly
     const isWindows = process.platform === 'win32'
-    const isBatFile = binPath.toLowerCase().endsWith('.bat')
+    
+    // Remove any existing quotes first to properly detect .bat files
+    // This handles cases where paths are incorrectly quoted before being passed in
+    let cleanPath = binPath.replace(/^["']|["']$/g, '')
+    const isBatFile = cleanPath.toLowerCase().endsWith('.bat')
     const needsShell = isWindows && isBatFile
 
     // On Windows, add --cacert argument if CA bundle exists and not already specified
     // This fixes SSL certificate verification issues
     let finalArgs = args
     if (isWindows && !args.includes('--cacert') && !args.includes('-k')) {
-      const binDir = path.dirname(binPath)
+      const binDir = path.dirname(cleanPath)
       const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt')
       if (fs.existsSync(caBundlePath)) {
         // Prepend --cacert to args so it's processed before the URL
@@ -31,15 +35,23 @@ export function runBinary(
     // This handles forward slashes, relative paths, and ensures proper formatting
     if (needsShell) {
       // Normalize the path: resolve relative paths and normalize separators
-      // Remove any existing quotes first (they might have been added incorrectly)
-      let normalizedPath = binPath.replace(/^["']|["']$/g, '')
+      let normalizedPath = cleanPath
       
-      // Resolve to absolute path if it's relative
-      if (!path.isAbsolute(normalizedPath)) {
+      // Check if it's a Windows absolute path (drive letter like D:\ or D:/)
+      // This check works even when running on non-Windows systems
+      const isWindowsAbsolutePath = /^[A-Za-z]:[\\/]/.test(normalizedPath)
+      
+      // Resolve to absolute path if it's relative (not Windows absolute path)
+      if (!isWindowsAbsolutePath && !path.isAbsolute(normalizedPath)) {
         normalizedPath = path.resolve(normalizedPath)
       } else {
         // Normalize absolute paths (handles forward/back slashes on Windows)
-        normalizedPath = path.normalize(normalizedPath)
+        // Use path.win32.normalize for Windows paths to ensure proper handling
+        if (isWindowsAbsolutePath) {
+          normalizedPath = path.win32.normalize(normalizedPath)
+        } else {
+          normalizedPath = path.normalize(normalizedPath)
+        }
       }
       
       binPath = normalizedPath

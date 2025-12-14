@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { runBinary } from '../../src/runner'
 import { spawn } from 'node:child_process'
+import path from 'node:path'
 
 // Mock child_process
 vi.mock('node:child_process', () => ({
@@ -415,8 +416,11 @@ describe('runBinary', () => {
       await runBinary(pathWithSpaces, ['-X', 'GET', 'https://example.com'])
 
       // Verify spawn was called with quoted path and shell: true
+      // Path should be normalized and quoted
+      const normalizedPath = path.win32.normalize(pathWithSpaces)
+      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
       expect(mockSpawn).toHaveBeenCalledWith(
-        `"${pathWithSpaces.replace(/"/g, '\\"')}"`,
+        expectedQuotedPath,
         expect.any(Array),
         expect.objectContaining({
           stdio: ['ignore', 'pipe', 'pipe'],
@@ -452,9 +456,11 @@ describe('runBinary', () => {
       const pathWithAmpersand = 'D:\\Users\\Test&Dev\\cuimp\\binaries\\curl_edge101.bat'
       await runBinary(pathWithAmpersand, ['-X', 'GET', 'https://example.com'])
 
-      // Verify path was quoted
+      // Verify path was normalized and quoted
+      const normalizedPath = path.win32.normalize(pathWithAmpersand)
+      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
       expect(mockSpawn).toHaveBeenCalledWith(
-        `"${pathWithAmpersand.replace(/"/g, '\\"')}"`,
+        expectedQuotedPath,
         expect.any(Array),
         expect.objectContaining({
           shell: true,
@@ -489,9 +495,10 @@ describe('runBinary', () => {
       const pathWithoutSpaces = 'D:\\Users\\ActivePC\\cuimp\\binaries\\curl_edge101.bat'
       await runBinary(pathWithoutSpaces, ['-X', 'GET', 'https://example.com'])
 
-      // Verify path was NOT quoted (no spaces/metacharacters)
+      // Verify path was normalized but NOT quoted (no spaces/metacharacters)
+      const normalizedPath = path.win32.normalize(pathWithoutSpaces)
       expect(mockSpawn).toHaveBeenCalledWith(
-        pathWithoutSpaces,
+        normalizedPath,
         expect.any(Array),
         expect.objectContaining({
           shell: true,
@@ -526,8 +533,11 @@ describe('runBinary', () => {
       const pathWithQuotes = 'D:\\Users\\"Test"\\cuimp\\binaries\\curl_edge101.bat'
       await runBinary(pathWithQuotes, ['-X', 'GET', 'https://example.com'])
 
-      // Verify quotes were escaped
-      const expectedQuotedPath = `"${pathWithQuotes.replace(/"/g, '\\"')}"`
+      // Verify quotes were removed, path normalized, then re-quoted if needed
+      const unquotedPath = pathWithQuotes.replace(/^["']|["']$/g, '')
+      const normalizedPath = path.win32.normalize(unquotedPath)
+      // Path has quotes in the middle, so it will be quoted
+      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
       expect(mockSpawn).toHaveBeenCalledWith(
         expectedQuotedPath,
         expect.any(Array),
@@ -610,6 +620,207 @@ describe('runBinary', () => {
           shell: false,
         })
       )
+    })
+
+    describe('path normalization', () => {
+      it('should normalize Windows .bat path with forward slashes', async () => {
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        // Path with forward slashes (Windows style but using /)
+        const pathWithForwardSlashes = 'D:/Users/ActivePC/cuimp/binaries/curl_edge101.bat'
+        await runBinary(pathWithForwardSlashes, ['-X', 'GET', 'https://example.com'])
+
+        // Verify path was normalized (forward slashes converted to backslashes)
+        const normalizedPath = path.win32.normalize(pathWithForwardSlashes)
+        expect(mockSpawn).toHaveBeenCalledWith(
+          normalizedPath,
+          expect.any(Array),
+          expect.objectContaining({
+            shell: true,
+          })
+        )
+      })
+
+      it('should resolve relative Windows .bat path to absolute', async () => {
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        // Relative path
+        const relativePath = './binaries/curl_edge101.bat'
+        await runBinary(relativePath, ['-X', 'GET', 'https://example.com'])
+
+        // Verify path was resolved to absolute
+        const resolvedPath = path.resolve(relativePath)
+        expect(mockSpawn).toHaveBeenCalledWith(
+          resolvedPath,
+          expect.any(Array),
+          expect.objectContaining({
+            shell: true,
+          })
+        )
+      })
+
+      it('should remove existing quotes before normalizing', async () => {
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        // Path with existing quotes (incorrectly added)
+        const pathWithQuotes = '"D:\\Users\\ActivePC\\cuimp\\binaries\\curl_edge101.bat"'
+        await runBinary(pathWithQuotes, ['-X', 'GET', 'https://example.com'])
+
+        // Verify quotes were removed, path was normalized, and NOT re-quoted (no spaces)
+        const unquotedPath = pathWithQuotes.replace(/^["']|["']$/g, '')
+        const normalizedPath = path.win32.normalize(unquotedPath)
+        // Path doesn't have spaces, so it shouldn't be quoted
+        expect(mockSpawn).toHaveBeenCalledWith(
+          normalizedPath,
+          expect.any(Array),
+          expect.objectContaining({
+            shell: true,
+          })
+        )
+      })
+
+      it('should normalize and quote path with spaces after normalization', async () => {
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        // Path with forward slashes AND spaces
+        const pathWithForwardSlashesAndSpaces = 'D:/Users/Active PC/cuimp/binaries/curl_edge101.bat'
+        await runBinary(pathWithForwardSlashesAndSpaces, ['-X', 'GET', 'https://example.com'])
+
+        // Verify path was normalized first, then quoted (because it has spaces)
+        const normalizedPath = path.win32.normalize(pathWithForwardSlashesAndSpaces)
+        const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
+        expect(mockSpawn).toHaveBeenCalledWith(
+          expectedQuotedPath,
+          expect.any(Array),
+          expect.objectContaining({
+            shell: true,
+          })
+        )
+      })
+
+      it('should normalize path without spaces (second scenario fix)', async () => {
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+
+        const mockStdout = Buffer.from('output')
+        const mockStderr = Buffer.from('')
+
+        mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10)
+          }
+        })
+
+        mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStdout), 5)
+          }
+        })
+
+        mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+          if (event === 'data') {
+            setTimeout(() => callback(mockStderr), 5)
+          }
+        })
+
+        // Path without spaces but with forward slashes (common issue)
+        const pathWithoutSpaces = 'D:/Users/ActivePC/cuimp/binaries/curl_edge101.bat'
+        await runBinary(pathWithoutSpaces, ['-X', 'GET', 'https://example.com'])
+
+        // Verify path was normalized (forward slashes to backslashes)
+        // This fixes the "no URL specified" error in scenario 2
+        const normalizedPath = path.win32.normalize(pathWithoutSpaces)
+        expect(mockSpawn).toHaveBeenCalledWith(
+          normalizedPath,
+          expect.any(Array),
+          expect.objectContaining({
+            shell: true,
+          })
+        )
+      })
     })
   })
 })
