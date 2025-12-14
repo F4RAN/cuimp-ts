@@ -469,7 +469,8 @@ describe('runBinary', () => {
       // Verify spawn was called with quoted path and shell: true
       // Path should be normalized and quoted
       const normalizedPath = path.win32.normalize(pathWithSpaces)
-      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
+      // Windows CMD uses "" to escape quotes inside double quotes
+      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '""')}"`
       expect(mockSpawn).toHaveBeenCalledWith(
         expectedQuotedPath,
         expect.any(Array),
@@ -511,7 +512,8 @@ describe('runBinary', () => {
 
       // Verify path was normalized and quoted
       const normalizedPath = path.win32.normalize(pathWithAmpersand)
-      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
+      // Windows CMD uses "" to escape quotes inside double quotes
+      const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '""')}"`
       expect(mockSpawn).toHaveBeenCalledWith(
         expectedQuotedPath,
         expect.any(Array),
@@ -842,7 +844,8 @@ describe('runBinary', () => {
 
         // Verify path was normalized first, then quoted (because it has spaces)
         const normalizedPath = path.win32.normalize(pathWithForwardSlashesAndSpaces)
-        const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '\\"')}"`
+        // Windows CMD uses "" to escape quotes inside double quotes
+        const expectedQuotedPath = `"${normalizedPath.replace(/"/g, '""')}"`
         expect(mockSpawn).toHaveBeenCalledWith(
           expectedQuotedPath,
           expect.any(Array),
