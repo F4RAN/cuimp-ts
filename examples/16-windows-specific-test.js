@@ -1,4 +1,4 @@
-import { createCuimpHttp } from './dist/index.js'
+import { createCuimpHttp } from '../dist/index.js'
 
 async function test() {
   const http = createCuimpHttp({
