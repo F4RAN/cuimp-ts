@@ -9,7 +9,7 @@ async function test() {
     // Test with password containing quote (kenmadev's example)
     const response = await http.post('https://httpbin.org/post', {
       username: 'username123',
-      password: '"P!ngpass123' // literal quote
+      password: '"P!ngpass123"test"' // literal quote
     })
     
     console.log('✅ Success! Status:', response.status)
