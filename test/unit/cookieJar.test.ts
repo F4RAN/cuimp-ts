@@ -150,6 +150,52 @@ describe('CookieJar', () => {
       const cookies = cookieJar.getCookies()
       expect(cookies).toHaveLength(3)
     })
+
+    it('should parse HttpOnly cookies and strip #HttpOnly_ prefix', () => {
+      cookieJar = new CookieJar(tempCookieFile)
+
+      // Write HttpOnly cookie directly to file (Netscape format)
+      const expiresTime = Math.floor(Date.now() / 1000) + 86400 // 1 day from now
+      fs.appendFileSync(
+        tempCookieFile,
+        `#HttpOnly_.domain.com\tTRUE\t/\tTRUE\t${expiresTime}\tcookieName\tcookieValue\n`
+      )
+
+      const cookies = cookieJar.getCookies()
+      expect(cookies).toHaveLength(1)
+      expect(cookies[0].domain).toBe('.domain.com') // Should strip #HttpOnly_ prefix
+      expect(cookies[0].name).toBe('cookieName')
+      expect(cookies[0].value).toBe('cookieValue')
+      expect(cookies[0].includeSubdomains).toBe(true)
+      expect(cookies[0].secure).toBe(true)
+      expect(cookies[0].path).toBe('/')
+    })
+
+    it('should parse both regular and HttpOnly cookies', () => {
+      cookieJar = new CookieJar(tempCookieFile)
+
+      // Add a regular cookie
+      cookieJar.setCookie({ domain: 'example.com', name: 'regular', value: 'value1' })
+
+      // Add an HttpOnly cookie directly
+      const expiresTime = Math.floor(Date.now() / 1000) + 86400
+      fs.appendFileSync(
+        tempCookieFile,
+        `#HttpOnly_.example.com\tTRUE\t/\tFALSE\t${expiresTime}\thttponly\tsecret\n`
+      )
+
+      const cookies = cookieJar.getCookies()
+      expect(cookies).toHaveLength(2)
+
+      const regularCookie = cookies.find(c => c.name === 'regular')
+      const httpOnlyCookie = cookies.find(c => c.name === 'httponly')
+
+      expect(regularCookie).toBeDefined()
+      expect(regularCookie?.domain).toBe('.example.com')
+      expect(httpOnlyCookie).toBeDefined()
+      expect(httpOnlyCookie?.domain).toBe('.example.com') // Should strip prefix
+      expect(httpOnlyCookie?.value).toBe('secret')
+    })
   })
 
   describe('getCookiesForDomain', () => {
@@ -195,6 +241,26 @@ describe('CookieJar', () => {
       expect(cookies).toHaveLength(1)
       expect(cookies[0].name).toBe('valid')
     })
+
+    it('should include HttpOnly cookies when filtering by domain', () => {
+      cookieJar = new CookieJar(tempCookieFile)
+
+      // Add HttpOnly cookie directly
+      const expiresTime = Math.floor(Date.now() / 1000) + 86400
+      fs.appendFileSync(
+        tempCookieFile,
+        `#HttpOnly_.example.com\tTRUE\t/\tTRUE\t${expiresTime}\thttponly_session\tabc123\n`
+      )
+
+      // Add regular cookie
+      cookieJar.setCookie({ domain: 'example.com', name: 'regular', value: 'value1' })
+
+      const cookies = cookieJar.getCookiesForDomain('example.com')
+      expect(cookies).toHaveLength(2)
+
+      const cookieNames = cookies.map(c => c.name).sort()
+      expect(cookieNames).toEqual(['httponly_session', 'regular'])
+    })
   })
 
   describe('deleteCookie', () => {
@@ -222,6 +288,27 @@ describe('CookieJar', () => {
       const cookies = cookieJar.getCookies()
       expect(cookies).toHaveLength(1)
       expect(cookies[0].domain).toBe('.other.com')
+    })
+
+    it('should delete HttpOnly cookies correctly', () => {
+      cookieJar = new CookieJar(tempCookieFile)
+
+      // Add HttpOnly cookie
+      const expiresTime = Math.floor(Date.now() / 1000) + 86400
+      fs.appendFileSync(
+        tempCookieFile,
+        `#HttpOnly_.example.com\tTRUE\t/\tTRUE\t${expiresTime}\thttponly_cookie\tsecret\n`
+      )
+
+      // Add regular cookie
+      cookieJar.setCookie({ domain: 'example.com', name: 'regular', value: 'value1' })
+
+      // Delete HttpOnly cookie
+      cookieJar.deleteCookie('httponly_cookie')
+
+      const cookies = cookieJar.getCookies()
+      expect(cookies).toHaveLength(1)
+      expect(cookies[0].name).toBe('regular')
     })
   })
 

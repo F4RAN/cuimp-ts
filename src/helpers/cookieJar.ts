@@ -84,6 +84,12 @@ export class CookieJar {
     }
   }
 
+  private isLineComment(line: string): boolean {
+    if (line.startsWith('#HttpOnly_')) return false
+    else if (line.startsWith('#')) return true
+    return false
+  }
+
   /**
    * Get all cookies as raw text (Netscape format)
    */
@@ -92,6 +98,13 @@ export class CookieJar {
       return ''
     }
     return fs.readFileSync(this.cookieFilePath, 'utf8')
+  }
+
+  private domainCleaner(domain: string): string {
+    let cleanDomain = domain
+    cleanDomain = cleanDomain.replace('#HttpOnly_', '')
+    // Future rules
+    return cleanDomain
   }
 
   /**
@@ -120,7 +133,7 @@ export class CookieJar {
 
     for (const line of lines) {
       // Skip comments and empty lines
-      if (line.startsWith('#') || line.trim() === '') {
+      if (this.isLineComment(line) || line.trim() === '') {
         continue
       }
 
@@ -128,7 +141,7 @@ export class CookieJar {
       const parts = line.split('\t')
       if (parts.length >= 7) {
         cookies.push({
-          domain: parts[0],
+          domain: this.domainCleaner(parts[0]),
           includeSubdomains: parts[1] === 'TRUE',
           path: parts[2],
           secure: parts[3] === 'TRUE',
@@ -211,13 +224,13 @@ export class CookieJar {
     const raw = this.getCookiesRaw()
     const lines = raw.split('\n')
     const filteredLines = lines.filter(line => {
-      if (line.startsWith('#') || line.trim() === '') {
+      if (this.isLineComment(line) || line.trim() === '') {
         return true // Keep comments and empty lines
       }
       const parts = line.split('\t')
       if (parts.length >= 7) {
         const cookieName = parts[5]
-        const cookieDomain = parts[0]
+        const cookieDomain = this.domainCleaner(parts[0])
         if (cookieName === name) {
           if (domain) {
             return cookieDomain !== domain && cookieDomain !== `.${domain}`
