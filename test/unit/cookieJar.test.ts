@@ -186,10 +186,10 @@ describe('CookieJar', () => {
 
       const cookies = cookieJar.getCookies()
       expect(cookies).toHaveLength(2)
-      
+
       const regularCookie = cookies.find(c => c.name === 'regular')
       const httpOnlyCookie = cookies.find(c => c.name === 'httponly')
-      
+
       expect(regularCookie).toBeDefined()
       expect(regularCookie?.domain).toBe('.example.com')
       expect(httpOnlyCookie).toBeDefined()
@@ -257,7 +257,7 @@ describe('CookieJar', () => {
 
       const cookies = cookieJar.getCookiesForDomain('example.com')
       expect(cookies).toHaveLength(2)
-      
+
       const cookieNames = cookies.map(c => c.name).sort()
       expect(cookieNames).toEqual(['httponly_session', 'regular'])
     })

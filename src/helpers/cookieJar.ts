@@ -84,9 +84,9 @@ export class CookieJar {
     }
   }
 
-  private isLineComment(line: string): boolean{
-    if(line.startsWith("#HttpOnly_")) return false
-    else if(line.startsWith("#")) return true
+  private isLineComment(line: string): boolean {
+    if (line.startsWith('#HttpOnly_')) return false
+    else if (line.startsWith('#')) return true
     return false
   }
 
@@ -100,9 +100,9 @@ export class CookieJar {
     return fs.readFileSync(this.cookieFilePath, 'utf8')
   }
 
-  private domainCleaner(domain: string): string{
+  private domainCleaner(domain: string): string {
     let cleanDomain = domain
-    cleanDomain = cleanDomain.replace("#HttpOnly_", "")
+    cleanDomain = cleanDomain.replace('#HttpOnly_', '')
     // Future rules
     return cleanDomain
   }
