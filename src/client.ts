@@ -187,23 +187,45 @@ export class CuimpHttp implements CuimpInstance {
       args.push('-H', `${k}: ${v}`)
     }
 
-    // Body
+    // Body - On Windows, use stdin to avoid command-line escaping issues with special characters
+    const isWindows = process.platform === 'win32'
+    let stdinData: string | Buffer | undefined
+
     if (config.data !== undefined && config.data !== null) {
       if (Buffer.isBuffer(config.data)) {
-        // We'll pass via --data-binary @- and write to stdin (but we spawned with no stdin piping).
-        // Simpler: stringify here for common types. For binary, recommend user pass string/base64.
-        args.push('--data-binary', config.data.toString('utf8'))
+        if (isWindows) {
+          stdinData = config.data
+          args.push('--data-binary', '@-')
+        } else {
+          args.push('--data-binary', config.data.toString('utf8'))
+        }
       } else if (config.data instanceof URLSearchParams) {
-        args.push('--data', config.data.toString())
+        const urlEncodedData = config.data.toString()
+        if (isWindows) {
+          stdinData = urlEncodedData
+          args.push('--data-binary', '@-')
+        } else {
+          args.push('--data', urlEncodedData)
+        }
         if (!Object.keys(normHeaders).some(h => h.toLowerCase() === 'content-type')) {
           args.push('-H', 'Content-Type: application/x-www-form-urlencoded')
         }
       } else if (typeof config.data === 'string') {
-        args.push('--data-binary', config.data)
+        if (isWindows) {
+          stdinData = config.data
+          args.push('--data-binary', '@-')
+        } else {
+          args.push('--data-binary', config.data)
+        }
       } else {
         // JSON
         const body = JSON.stringify(config.data)
-        args.push('--data-binary', body)
+        if (isWindows) {
+          stdinData = body
+          args.push('--data-binary', '@-')
+        } else {
+          args.push('--data-binary', body)
+        }
         if (!Object.keys(normHeaders).some(h => h.toLowerCase() === 'content-type')) {
           args.push('-H', 'Content-Type: application/json')
         }
@@ -240,6 +262,7 @@ export class CuimpHttp implements CuimpInstance {
     const result: RunResult = await runBinary(bin, args, {
       timeout: config.timeout ?? this.defaults.timeout,
       signal: config.signal,
+      stdin: stdinData,
     })
 
     // Check exit code - but for HTTP_RETURNED_ERROR (22), we may still have a valid response body

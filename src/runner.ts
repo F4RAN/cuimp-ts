@@ -7,7 +7,7 @@ import fs from 'node:fs'
 export function runBinary(
   binPath: string,
   args: string[],
-  opts?: { timeout?: number; signal?: AbortSignal }
+  opts?: { timeout?: number; signal?: AbortSignal; stdin?: string | Buffer }
 ): Promise<RunResult> {
   return new Promise((resolve, reject) => {
     // On Windows, .bat files need shell: true to execute properly
@@ -84,9 +84,16 @@ export function runBinary(
     }
 
     const child = spawn(binPath, finalArgs, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [opts?.stdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       shell: needsShell,
     })
+
+    // If stdin data is provided, write it to the process
+    if (opts?.stdin && child.stdin) {
+      const stdinData = typeof opts.stdin === 'string' ? Buffer.from(opts.stdin) : opts.stdin
+      child.stdin.write(stdinData)
+      child.stdin.end()
+    }
 
     let killedByTimeout = false
     let killedByAbort = false
@@ -116,8 +123,8 @@ export function runBinary(
       }
     }
 
-    child.stdout.on('data', (c: Uint8Array) => out.push(Buffer.from(c)))
-    child.stderr.on('data', (c: Uint8Array) => err.push(Buffer.from(c)))
+    child.stdout?.on('data', (c: Uint8Array) => out.push(Buffer.from(c)))
+    child.stderr?.on('data', (c: Uint8Array) => err.push(Buffer.from(c)))
 
     child.on('error', e => {
       if (t) clearTimeout(t)
