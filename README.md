@@ -907,6 +907,13 @@ Thanks to these awesome people who have contributed to this project:
       </a><br />
       <sub>HTTP/2 Headers Fix</sub>
     </td>
+    <td align="center">
+      <a href="https://github.com/kenmadev">
+        <img src="https://github.com/kenmadev.png" width="100px;" alt="kenmadev"/><br />
+        <sub><b>kenmadev</b></sub>
+    </a><br />
+    <sub>Windows Repro & Testing</sub>
+</td>
   </tr>
 </table>
 
