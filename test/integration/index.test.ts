@@ -330,16 +330,33 @@ describe('Integration Tests - Main API', () => {
         },
       })
 
-      expect(mockRunBinary).toHaveBeenCalledWith(
-        '/usr/bin/curl-impersonate',
-        expect.arrayContaining([
-          '--data-binary',
-          'file content',
-          '-H',
-          'Content-Type: application/octet-stream',
-        ]),
-        expect.any(Object)
-      )
+      // On Windows, data is passed via stdin; on other platforms, via command-line
+      const isWindows = process.platform === 'win32'
+      if (isWindows) {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '--data-binary',
+            '@-',
+            '-H',
+            'Content-Type: application/octet-stream',
+          ]),
+          expect.objectContaining({
+            stdin: fileData,
+          })
+        )
+      } else {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '--data-binary',
+            'file content',
+            '-H',
+            'Content-Type: application/octet-stream',
+          ]),
+          expect.any(Object)
+        )
+      }
     })
 
     it('should handle form submission', async () => {
@@ -351,16 +368,33 @@ describe('Integration Tests - Main API', () => {
 
       const _response = await client.post('https://api.example.com/login', formData)
 
-      expect(mockRunBinary).toHaveBeenCalledWith(
-        '/usr/bin/curl-impersonate',
-        expect.arrayContaining([
-          '--data',
-          'username=john&password=secret',
-          '-H',
-          'Content-Type: application/x-www-form-urlencoded',
-        ]),
-        expect.any(Object)
-      )
+      // On Windows, data is passed via stdin; on other platforms, via command-line
+      const isWindows = process.platform === 'win32'
+      if (isWindows) {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '--data-binary',
+            '@-',
+            '-H',
+            'Content-Type: application/x-www-form-urlencoded',
+          ]),
+          expect.objectContaining({
+            stdin: 'username=john&password=secret',
+          })
+        )
+      } else {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '--data',
+            'username=john&password=secret',
+            '-H',
+            'Content-Type: application/x-www-form-urlencoded',
+          ]),
+          expect.any(Object)
+        )
+      }
     })
   })
 })

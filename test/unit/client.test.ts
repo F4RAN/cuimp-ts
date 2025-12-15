@@ -94,18 +94,38 @@ describe('CuimpHttp', () => {
       expect(response.status).toBe(201)
       expect(response.statusText).toBe('Created')
       expect(response.data).toEqual({ id: 123 })
-      expect(mockRunBinary).toHaveBeenCalledWith(
-        '/usr/bin/curl-impersonate',
-        expect.arrayContaining([
-          '-X',
-          'POST',
-          '--data-binary',
-          '{"name":"John Doe","email":"john@example.com"}',
-          '-H',
-          'Content-Type: application/json',
-        ]),
-        expect.any(Object)
-      )
+
+      // On Windows, data is passed via stdin; on other platforms, via command-line
+      const isWindows = process.platform === 'win32'
+      if (isWindows) {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '-X',
+            'POST',
+            '--data-binary',
+            '@-',
+            '-H',
+            'Content-Type: application/json',
+          ]),
+          expect.objectContaining({
+            stdin: '{"name":"John Doe","email":"john@example.com"}',
+          })
+        )
+      } else {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '-X',
+            'POST',
+            '--data-binary',
+            '{"name":"John Doe","email":"john@example.com"}',
+            '-H',
+            'Content-Type: application/json',
+          ]),
+          expect.any(Object)
+        )
+      }
     })
 
     it('should handle URL parameters', async () => {
@@ -355,16 +375,33 @@ describe('CuimpHttp', () => {
 
       await client.request(config)
 
-      expect(mockRunBinary).toHaveBeenCalledWith(
-        '/usr/bin/curl-impersonate',
-        expect.arrayContaining([
-          '--data',
-          'username=john&password=secret',
-          '-H',
-          'Content-Type: application/x-www-form-urlencoded',
-        ]),
-        expect.any(Object)
-      )
+      // On Windows, data is passed via stdin; on other platforms, via command-line
+      const isWindows = process.platform === 'win32'
+      if (isWindows) {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '--data-binary',
+            '@-',
+            '-H',
+            'Content-Type: application/x-www-form-urlencoded',
+          ]),
+          expect.objectContaining({
+            stdin: 'username=john&password=secret',
+          })
+        )
+      } else {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining([
+            '--data',
+            'username=john&password=secret',
+            '-H',
+            'Content-Type: application/x-www-form-urlencoded',
+          ]),
+          expect.any(Object)
+        )
+      }
     })
 
     it('should handle string data', async () => {
@@ -383,11 +420,23 @@ describe('CuimpHttp', () => {
 
       await client.request(config)
 
-      expect(mockRunBinary).toHaveBeenCalledWith(
-        '/usr/bin/curl-impersonate',
-        expect.arrayContaining(['--data-binary', 'raw string data']),
-        expect.any(Object)
-      )
+      // On Windows, data is passed via stdin; on other platforms, via command-line
+      const isWindows = process.platform === 'win32'
+      if (isWindows) {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining(['--data-binary', '@-']),
+          expect.objectContaining({
+            stdin: 'raw string data',
+          })
+        )
+      } else {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining(['--data-binary', 'raw string data']),
+          expect.any(Object)
+        )
+      }
     })
 
     it('should handle Buffer data', async () => {
@@ -407,11 +456,23 @@ describe('CuimpHttp', () => {
 
       await client.request(config)
 
-      expect(mockRunBinary).toHaveBeenCalledWith(
-        '/usr/bin/curl-impersonate',
-        expect.arrayContaining(['--data-binary', 'binary data']),
-        expect.any(Object)
-      )
+      // On Windows, data is passed via stdin; on other platforms, via command-line
+      const isWindows = process.platform === 'win32'
+      if (isWindows) {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining(['--data-binary', '@-']),
+          expect.objectContaining({
+            stdin: bufferData,
+          })
+        )
+      } else {
+        expect(mockRunBinary).toHaveBeenCalledWith(
+          '/usr/bin/curl-impersonate',
+          expect.arrayContaining(['--data-binary', 'binary data']),
+          expect.any(Object)
+        )
+      }
     })
 
     it('should throw error for missing URL', async () => {
