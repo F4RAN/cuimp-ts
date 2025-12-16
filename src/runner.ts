@@ -16,10 +16,9 @@ function parseBatFile(batFilePath: string): string[] {
 
   const args: string[] = []
   let inCurlCommand = false
-  let accumulatedContent = ''
+  let accumulated = ''
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+  for (const line of lines) {
     const trimmed = line.trim()
 
     // Skip comments and empty lines
@@ -31,41 +30,29 @@ function parseBatFile(batFilePath: string): string[] {
     if (trimmed.includes('curl.exe') || trimmed.includes('"%~dp0curl.exe"')) {
       inCurlCommand = true
       // Extract everything after curl.exe
-      const curlMatch = line.match(/(?:.*?"%~dp0curl\.exe"|.*?curl\.exe)\s*(.*)$/)
-      if (curlMatch && curlMatch[1]) {
-        let afterCurl = curlMatch[1]
-        // Remove trailing ^ and whitespace if present
-        afterCurl = afterCurl.replace(/\s*\^\s*$/, '')
-        if (afterCurl.trim()) {
-          accumulatedContent = afterCurl
-        } else {
-          accumulatedContent = ''
-        }
+      const match = line.match(/(?:.*?"%~dp0curl\.exe"|.*?curl\.exe)\s*(.*)$/)
+      if (match && match[1]) {
+        accumulated = match[1].replace(/\s*\^\s*$/, '')
       } else {
-        accumulatedContent = ''
+        accumulated = ''
       }
       continue
     }
 
-    // If we're in the curl command section
     if (inCurlCommand) {
-      // Check if we hit %* (end of bat arguments)
+      // Check for %*
       if (trimmed.includes('%*')) {
-        // Process any accumulated content before breaking
-        if (accumulatedContent.trim()) {
-          const extractedArgs = parseBatArguments(accumulatedContent.trim())
-          args.push(...extractedArgs)
+        if (accumulated.trim()) {
+          const parsed = parseBatArguments(accumulated.trim())
+          args.push(...parsed)
         }
         break
       }
 
-      // Check for line continuation (^ at end of line)
+      // Check for line continuation
       const hasContinuation = line.trimEnd().endsWith('^')
+      let lineContent = line.replace(/^\s+/, '') // Remove leading spaces
       
-      // Remove leading indentation (common in .bat files) but preserve content
-      let lineContent = line.replace(/^\s+/, '')
-      
-      // Remove trailing ^ and whitespace
       if (hasContinuation) {
         lineContent = lineContent.replace(/\s*\^\s*$/, '')
       } else {
@@ -73,38 +60,36 @@ function parseBatFile(batFilePath: string): string[] {
       }
 
       if (lineContent) {
-        // Check if we're currently inside quotes
-        const openQuotes = (accumulatedContent.match(/"/g) || []).length
-        const isInsideQuotes = openQuotes % 2 === 1
-        
-        if (accumulatedContent) {
-          if (!isInsideQuotes) {
-            // Not inside quotes, add space to separate arguments
-            accumulatedContent += ' ' + lineContent
+        // Check if inside quotes
+        const quoteCount = (accumulated.match(/"/g) || []).length
+        const inQuotes = quoteCount % 2 === 1
+
+        if (accumulated) {
+          if (inQuotes) {
+            accumulated += lineContent // No space inside quotes
           } else {
-            // Inside quotes, join directly (no space) - quoted strings can span lines
-            accumulatedContent += lineContent
+            accumulated += ' ' + lineContent // Space between arguments
           }
         } else {
-          accumulatedContent = lineContent
+          accumulated = lineContent
         }
       }
 
-      // If no continuation, process the accumulated content
+      // Process if no continuation
       if (!hasContinuation) {
-        if (accumulatedContent.trim()) {
-          const extractedArgs = parseBatArguments(accumulatedContent.trim())
-          args.push(...extractedArgs)
-          accumulatedContent = ''
+        if (accumulated.trim()) {
+          const parsed = parseBatArguments(accumulated.trim())
+          args.push(...parsed)
+          accumulated = ''
         }
       }
     }
   }
 
-  // Process any remaining accumulated content
-  if (accumulatedContent.trim()) {
-    const extractedArgs = parseBatArguments(accumulatedContent.trim())
-    args.push(...extractedArgs)
+  // Process remaining
+  if (accumulated.trim()) {
+    const parsed = parseBatArguments(accumulated.trim())
+    args.push(...parsed)
   }
 
   return args
@@ -116,50 +101,41 @@ function parseBatFile(batFilePath: string): string[] {
  */
 function parseBatArguments(line: string): string[] {
   const args: string[] = []
-  let i = 0
-  let currentArg = ''
+  let current = ''
   let inQuotes = false
   let quoteChar = ''
 
-  while (i < line.length) {
+  for (let i = 0; i < line.length; i++) {
     const char = line[i]
 
-    // Handle quotes - but ignore escaped quotes
     if ((char === '"' || char === "'") && (i === 0 || line[i - 1] !== '\\')) {
       if (!inQuotes) {
-        // Starting a quoted section
         inQuotes = true
         quoteChar = char
-        currentArg += char
+        current += char
       } else if (char === quoteChar) {
-        // Closing the quoted section
         inQuotes = false
-        currentArg += char
+        current += char
         quoteChar = ''
       } else {
-        // Different quote type inside quotes (e.g., ' inside ")
-        currentArg += char
+        current += char
       }
     } else if (char === ' ' && !inQuotes) {
-      // Space outside quotes - end of current argument
-      if (currentArg) {
-        args.push(currentArg)
-        currentArg = ''
+      if (current) {
+        args.push(current)
+        current = ''
       }
       // Skip multiple spaces
       while (i + 1 < line.length && line[i + 1] === ' ') {
         i++
       }
     } else {
-      // Regular character - add to current argument
-      currentArg += char
+      current += char
     }
-    i++
   }
 
-  // Add the last argument if any
-  if (currentArg) {
-    args.push(currentArg)
+  if (current) {
+    args.push(current)
   }
 
   return args
