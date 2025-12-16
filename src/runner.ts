@@ -29,8 +29,12 @@ function parseBatFile(batFilePath: string): string[] {
     // Check if this line starts the curl.exe command
     if (trimmed.includes('curl.exe') || trimmed.includes('"%~dp0curl.exe"')) {
       inCurlCommand = true
-      // Extract everything after curl.exe
-      const afterCurl = trimmed.replace(/.*?"%~dp0curl\.exe"|.*?curl\.exe/, '').trim()
+      // Extract everything after curl.exe, removing line continuation if present
+      let afterCurl = trimmed.replace(/.*?"%~dp0curl\.exe"|.*?curl\.exe/, '').trim()
+      // Remove line continuation character if present
+      if (afterCurl.endsWith('^')) {
+        afterCurl = afterCurl.slice(0, -1).trim()
+      }
       if (afterCurl) {
         currentLine = afterCurl
       }
@@ -39,6 +43,17 @@ function parseBatFile(batFilePath: string): string[] {
 
     // If we're in the curl command section
     if (inCurlCommand) {
+      // Check if we hit %* (end of bat arguments) - process before breaking
+      if (trimmed.includes('%*')) {
+        // Process any accumulated line before breaking
+        if (currentLine) {
+          const extractedArgs = parseBatArguments(currentLine)
+          args.push(...extractedArgs)
+          currentLine = ''
+        }
+        break
+      }
+
       // Check for line continuation (^ at end of line)
       const hasContinuation = trimmed.endsWith('^')
       const lineContent = hasContinuation ? trimmed.slice(0, -1).trim() : trimmed
@@ -53,11 +68,6 @@ function parseBatFile(batFilePath: string): string[] {
           const extractedArgs = parseBatArguments(currentLine)
           args.push(...extractedArgs)
           currentLine = ''
-        }
-
-        // Check if we hit %* (end of bat arguments)
-        if (trimmed.includes('%*')) {
-          break
         }
       }
     }
@@ -231,9 +241,28 @@ export function runBinary(
     // Handle .bat files by extracting arguments and using curl.exe directly
     if (isWindows && isBatFile) {
       try {
-        // Find curl.exe in the same directory as the .bat file
+        // Find curl.exe - check multiple locations
         const batDir = path.dirname(cleanPath)
-        const curlExePath = path.join(batDir, 'curl.exe')
+        let curlExePath = path.join(batDir, 'curl.exe')
+
+        // If not found in same directory, check parent directory (for bin/ subdirectory structure)
+        if (!fs.existsSync(curlExePath)) {
+          const parentDir = path.dirname(batDir)
+          curlExePath = path.join(parentDir, 'curl.exe')
+        }
+
+        // Also try case-insensitive search in the same directory
+        if (!fs.existsSync(curlExePath)) {
+          try {
+            const files = fs.readdirSync(batDir)
+            const curlExe = files.find(f => f.toLowerCase() === 'curl.exe')
+            if (curlExe) {
+              curlExePath = path.join(batDir, curlExe)
+            }
+          } catch {
+            // Directory read failed, continue with path-based search
+          }
+        }
 
         if (fs.existsSync(curlExePath)) {
           // Extract user-provided headers from args
@@ -253,6 +282,9 @@ export function runBinary(
           needsShell = false // .exe files don't need shell
         } else {
           // Fallback: curl.exe not found, use .bat file (with potential duplicate header issue)
+          console.warn(
+            `curl.exe not found. Searched in: ${path.join(batDir, 'curl.exe')}, ${path.join(path.dirname(batDir), 'curl.exe')}. Falling back to .bat file.`
+          )
           needsShell = true
         }
       } catch (error) {
