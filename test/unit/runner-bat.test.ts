@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { runBinary } from '../../src/runner'
 import { spawn } from 'node:child_process'
-import path from 'node:path'
 import fs from 'node:fs'
-import os from 'node:os'
 
 // Mock child_process
 vi.mock('node:child_process', () => ({
@@ -95,7 +93,6 @@ describe('runBinary - Windows .bat file header overwrite', () => {
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
     const curlExePath = 'C:\\binaries\\curl.exe'
-    const parentCurlExePath = 'C:\\curl.exe'
 
     const batContent = `@echo off
 "%~dp0curl.exe" ^
@@ -182,8 +179,6 @@ describe('runBinary - Windows .bat file header overwrite', () => {
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
-    const curlExePath = 'C:\\binaries\\curl.exe'
-    const parentCurlExePath = 'C:\\curl.exe'
 
     const batContent = `@echo off
 "%~dp0curl.exe" ^
@@ -241,8 +236,6 @@ describe('runBinary - Windows .bat file header overwrite', () => {
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
-    const curlExePath = 'C:\\binaries\\curl.exe'
-    const parentCurlExePath = 'C:\\curl.exe'
 
     const batContent = `@echo off
 "%~dp0curl.exe" ^
@@ -300,7 +293,6 @@ describe('runBinary - Windows .bat file header overwrite', () => {
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
-    const curlExePath = 'C:\\binaries\\curl.exe'
 
     mockExistsSync.mockImplementation((p: string) => {
       return p === batPath
@@ -338,8 +330,6 @@ describe('runBinary - Windows .bat file header overwrite', () => {
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
-    const curlExePath = 'C:\\binaries\\curl.exe'
-    const parentCurlExePath = 'C:\\curl.exe'
 
     const batContent = `@echo off
 "%~dp0curl.exe" ^
@@ -393,8 +383,6 @@ describe('runBinary - Windows .bat file header overwrite', () => {
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
-    const curlExePath = 'C:\\binaries\\curl.exe'
-    const parentCurlExePath = 'C:\\curl.exe'
 
     // Mock already returns true by default from beforeEach
 
