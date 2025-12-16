@@ -85,7 +85,13 @@ function parseBatFile(batFilePath: string): string[] {
       }
 
       if (lineContent) {
-        const quoteCount = (accumulated.match(/"/g) || []).length
+        // Count only unescaped quotes to determine if we're inside quotes
+        let quoteCount = 0
+        for (let j = 0; j < accumulated.length; j++) {
+          if (accumulated[j] === '"' && (j === 0 || accumulated[j - 1] !== '\\')) {
+            quoteCount++
+          }
+        }
         const inQuotes = quoteCount % 2 === 1
 
         if (accumulated) {
@@ -239,13 +245,16 @@ function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string
         const headerName = headerMatch[1].trim().toLowerCase()
 
         if (userHeaderNames.has(headerName)) {
+          // Skip both flag and value
           i += 2
           continue
         }
       }
 
+      // Keep both flag and value
       filtered.push(arg)
-      i++
+      filtered.push(headerValue)
+      i += 2
       continue
     }
 
