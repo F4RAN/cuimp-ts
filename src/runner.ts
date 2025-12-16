@@ -112,12 +112,13 @@ function parseBatArguments(line: string): string[] {
       if (!inQuotes) {
         inQuotes = true
         quoteChar = char
-        current += char
+        // Don't add opening quote - we'll strip outer quotes later
       } else if (char === quoteChar) {
         inQuotes = false
-        current += char
         quoteChar = ''
+        // Don't add closing quote - we'll strip outer quotes later
       } else {
+        // Different quote type inside quotes - keep it
         current += char
       }
     } else if (char === ' ' && !inQuotes) {
