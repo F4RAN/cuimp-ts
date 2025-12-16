@@ -78,7 +78,20 @@ function parseBatFile(batFilePath: string): string[] {
         if (beforePercent) {
           // Add content before %* to accumulated
           if (accumulated) {
-            accumulated += ' ' + beforePercent
+            // Count only unescaped quotes to determine if we're inside quotes
+            let quoteCount = 0
+            for (let j = 0; j < accumulated.length; j++) {
+              if (accumulated[j] === '"' && (j === 0 || accumulated[j - 1] !== '\\')) {
+                quoteCount++
+              }
+            }
+            const inQuotes = quoteCount % 2 === 1
+
+            if (inQuotes) {
+              accumulated += beforePercent
+            } else {
+              accumulated += ' ' + beforePercent
+            }
           } else {
             accumulated = beforePercent
           }
