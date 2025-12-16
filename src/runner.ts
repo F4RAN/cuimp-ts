@@ -59,7 +59,24 @@ function parseBatFile(batFilePath: string): string[] {
       const lineContent = hasContinuation ? trimmed.slice(0, -1).trim() : trimmed
 
       if (lineContent) {
-        currentLine += (currentLine ? ' ' : '') + lineContent
+        // When joining lines with continuation, check if we're inside quotes
+        // If inside quotes, don't add space (quoted strings can span lines)
+        // Otherwise, add space to separate arguments
+        if (currentLine) {
+          // Check if currentLine ends with an unclosed quote
+          const openQuotes = (currentLine.match(/"/g) || []).length
+          const isInsideQuotes = openQuotes % 2 === 1
+          
+          if (!isInsideQuotes) {
+            // Not inside quotes, add space to separate arguments
+            currentLine += ' ' + lineContent
+          } else {
+            // Inside quotes, join directly (no space)
+            currentLine += lineContent
+          }
+        } else {
+          currentLine = lineContent
+        }
       }
 
       // If no continuation, process the accumulated line
