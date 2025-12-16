@@ -29,21 +29,25 @@ function parseBatFile(batFilePath: string): string[] {
     // Check if this line starts the curl.exe command
     if (trimmed.includes('curl.exe') || trimmed.includes('"%~dp0curl.exe"')) {
       inCurlCommand = true
-      // Extract everything after curl.exe
-      let afterCurl = trimmed.replace(/.*?"%~dp0curl\.exe"|.*?curl\.exe/, '')
-      // Check if line has continuation - don't trim if it does (preserve spacing)
-      const hasContinuation = afterCurl.trim().endsWith('^')
-      if (hasContinuation) {
-        // Remove the ^ but preserve the rest (don't trim, might be inside quotes)
-        afterCurl = afterCurl.replace(/\s*\^\s*$/, '')
+      // Extract everything after curl.exe using a regex that preserves the content
+      const curlMatch = trimmed.match(/(?:.*?"%~dp0curl\.exe"|.*?curl\.exe)\s*(.*)$/)
+      if (curlMatch && curlMatch[1]) {
+        let afterCurl = curlMatch[1]
+        // Check if line has continuation
+        const hasContinuation = afterCurl.trimEnd().endsWith('^')
+        if (hasContinuation) {
+          // Remove the ^ and any trailing whitespace, but preserve leading content
+          afterCurl = afterCurl.replace(/\s*\^\s*$/, '')
+        } else {
+          afterCurl = afterCurl.trim()
+        }
+        if (afterCurl) {
+          currentLine = afterCurl
+        }
+        // Always continue to next line to process continuations
+        continue
       } else {
-        afterCurl = afterCurl.trim()
-      }
-      if (afterCurl) {
-        currentLine = afterCurl
-      }
-      // If there's a continuation, continue to next iteration to process the next line
-      if (hasContinuation) {
+        // No content after curl.exe on this line, continue to next line
         continue
       }
     }
@@ -63,7 +67,11 @@ function parseBatFile(batFilePath: string): string[] {
 
       // Check for line continuation (^ at end of line)
       const hasContinuation = trimmed.endsWith('^')
-      const lineContent = hasContinuation ? trimmed.slice(0, -1).trim() : trimmed
+      // For continuations, remove ^ but preserve spacing (quoted strings might span lines)
+      // For non-continuations, we can trim
+      const lineContent = hasContinuation 
+        ? trimmed.slice(0, -1).replace(/\s+$/, '') // Remove ^ and trailing whitespace only
+        : trimmed.trim()
 
       if (lineContent) {
         // When joining lines with continuation, check if we're inside quotes
