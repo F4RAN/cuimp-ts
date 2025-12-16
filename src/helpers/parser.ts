@@ -170,25 +170,35 @@ const findBinaryWithVersion = (browser: string, version: string): string | null 
  */
 const findExistingBinary = (browser: string = ''): string | null => {
   // Filter patterns based on browser if specified
-  const patternsToSearch = browser
-    ? BINARY_PATTERNS.filter(pattern => {
-        if (browser === 'chrome')
-          return pattern.includes('chrome') || pattern === 'curl-impersonate'
-        if (browser === 'firefox')
-          return pattern.includes('firefox') || pattern === 'curl-impersonate'
-        if (browser === 'edge') return pattern.includes('edge') || pattern === 'curl-impersonate'
-        if (browser === 'safari')
-          return pattern.includes('safari') || pattern === 'curl-impersonate'
-        return pattern === 'curl-impersonate' // fallback to generic
-      }).sort((a, b) => {
-        // Prioritize browser-specific patterns over generic ones
-        const aIsGeneric = a === 'curl-impersonate' || a === 'curl-impersonate.exe'
-        const bIsGeneric = b === 'curl-impersonate' || b === 'curl-impersonate.exe'
-        if (aIsGeneric && !bIsGeneric) return 1 // generic comes after specific
-        if (!aIsGeneric && bIsGeneric) return -1 // specific comes before generic
-        return 0
-      })
-    : BINARY_PATTERNS
+  // Also filter out Windows-specific patterns (.bat, .exe) on non-Windows systems
+  const isWindows = process.platform === 'win32'
+  const patternsToSearch = (
+    browser
+      ? BINARY_PATTERNS.filter(pattern => {
+          if (browser === 'chrome')
+            return pattern.includes('chrome') || pattern === 'curl-impersonate'
+          if (browser === 'firefox')
+            return pattern.includes('firefox') || pattern === 'curl-impersonate'
+          if (browser === 'edge') return pattern.includes('edge') || pattern === 'curl-impersonate'
+          if (browser === 'safari')
+            return pattern.includes('safari') || pattern === 'curl-impersonate'
+          return pattern === 'curl-impersonate' // fallback to generic
+        }).sort((a, b) => {
+          // Prioritize browser-specific patterns over generic ones
+          const aIsGeneric = a === 'curl-impersonate' || a === 'curl-impersonate.exe'
+          const bIsGeneric = b === 'curl-impersonate' || b === 'curl-impersonate.exe'
+          if (aIsGeneric && !bIsGeneric) return 1 // generic comes after specific
+          if (!aIsGeneric && bIsGeneric) return -1 // specific comes before generic
+          return 0
+        })
+      : BINARY_PATTERNS
+  ).filter(pattern => {
+    // On non-Windows systems, exclude .bat and .exe patterns
+    if (!isWindows) {
+      return !pattern.endsWith('.bat') && !pattern.endsWith('.exe')
+    }
+    return true
+  })
 
   // Get the user's home directory for binaries (primary location)
   const homeDir = os.homedir()
@@ -200,7 +210,6 @@ const findExistingBinary = (browser: string = ''): string | null => {
 
   // On Windows, binaries are extracted to a 'bin' subdirectory
   // Create search paths including both directories and Windows-specific bin subdirectory
-  const isWindows = process.platform === 'win32'
   const searchPaths = [
     homeBinariesDir,
     ...(isWindows ? [path.resolve(homeBinariesDir, 'bin')] : []),
@@ -216,6 +225,10 @@ const findExistingBinary = (browser: string = ''): string | null => {
         if (pattern.includes('*')) {
           const files = fs.readdirSync(searchPath)
           const matchingFiles = files.filter(file => {
+            // Skip .bat files on non-Windows systems
+            if (!isWindows && file.toLowerCase().endsWith('.bat')) {
+              return false
+            }
             const regex = new RegExp(pattern.replace('*', '.*'))
             return regex.test(file)
           })
@@ -231,12 +244,20 @@ const findExistingBinary = (browser: string = ''): string | null => {
               })
               const bestMatch = sortedFiles[0]
               const fullPath = path.join(searchPath, bestMatch)
+              // Skip .bat files on non-Windows systems
+              if (!isWindows && fullPath.toLowerCase().endsWith('.bat')) {
+                continue
+              }
               if (fs.statSync(fullPath).isFile()) {
                 return fullPath
               }
             } else {
               // Single match
               const fullPath = path.join(searchPath, matchingFiles[0])
+              // Skip .bat files on non-Windows systems
+              if (!isWindows && fullPath.toLowerCase().endsWith('.bat')) {
+                continue
+              }
               if (fs.statSync(fullPath).isFile()) {
                 return fullPath
               }
@@ -244,6 +265,10 @@ const findExistingBinary = (browser: string = ''): string | null => {
           }
         } else {
           const fullPath = path.join(searchPath, pattern)
+          // Skip .bat files on non-Windows systems
+          if (!isWindows && fullPath.toLowerCase().endsWith('.bat')) {
+            continue
+          }
           if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
             return fullPath
           }
