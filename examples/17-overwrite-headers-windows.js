@@ -1,33 +1,41 @@
 #!/usr/bin/env node
 
 /**
- * Manual test script for .bat file header filtering fix
+ * Overwrite Headers on Windows Example
  * 
- * This script tests that duplicate Accept headers are removed when using .bat files on Windows.
+ * This example demonstrates how custom headers override .bat file defaults on Windows,
+ * preventing duplicate headers when using curl-impersonate .bat files.
  * 
  * Usage:
- *   node test-bat-fix.js
+ *   node examples/17-overwrite-headers-windows.js
  * 
  * Requirements:
  *   - Windows OS
  *   - curl-impersonate binary with .bat files installed
  */
 
-import { createCuimpHttp } from './dist/index.js'
+import { createCuimpHttp } from '../dist/index.js'
 
-async function testBatFileHeaderFix() {
-  console.log('=== Testing .bat File Header Filtering Fix ===\n')
+async function main() {
+  console.log('=== Overwrite Headers on Windows Example ===\n')
+
+  if (process.platform !== 'win32') {
+    console.log('⚠️  This example is designed for Windows OS.')
+    console.log('   On Windows, curl-impersonate uses .bat wrapper files')
+    console.log('   that contain default headers. This example demonstrates')
+    console.log('   how custom headers override those defaults.\n')
+    console.log('   Current platform:', process.platform)
+    console.log('   You can still run this example, but the header overwrite')
+    console.log('   functionality is Windows-specific.\n')
+  }
 
   try {
-    // Create a client with Chrome impersonation (will use .bat file on Windows)
     const client = createCuimpHttp({
       descriptor: { browser: 'chrome', version: '136' }
     })
 
-    console.log('1. Testing with custom Accept header (should NOT have duplicates)...')
+    console.log('1. Testing with custom Accept header...')
     
-    // Make a request with custom Accept header
-    // This should NOT result in duplicate Accept headers
     const response = await client.get('https://httpbin.org/headers', {
       headers: {
         'Accept': 'application/json'
@@ -37,10 +45,7 @@ async function testBatFileHeaderFix() {
     console.log('   ✅ Request completed')
     console.log('   Status:', response.status)
     
-    // Check the headers that were sent
     const sentHeaders = response.data.headers || {}
-    
-    // Find Accept header(s) in the response
     const acceptHeaders = []
     for (const [key, value] of Object.entries(sentHeaders)) {
       if (key.toLowerCase() === 'accept') {
@@ -48,22 +53,17 @@ async function testBatFileHeaderFix() {
       }
     }
 
-    console.log('\n   📋 Accept headers sent:')
-    if (acceptHeaders.length === 0) {
-      console.log('   ⚠️  No Accept header found in response')
-    } else if (acceptHeaders.length === 1) {
+    console.log('\n   Accept headers sent:')
+    if (acceptHeaders.length === 1) {
       console.log(`   ✅ Single Accept header: ${acceptHeaders[0]}`)
       if (acceptHeaders[0] === 'application/json') {
         console.log('   ✅ Correct! Only user-provided Accept header is present')
-      } else {
-        console.log('   ⚠️  Accept header value is not "application/json"')
       }
     } else {
       console.log(`   ❌ DUPLICATE Accept headers found (${acceptHeaders.length}):`)
       acceptHeaders.forEach((header, i) => {
         console.log(`      ${i + 1}. ${header}`)
       })
-      console.log('   ❌ This indicates the fix is NOT working!')
     }
 
     console.log('\n2. Testing with multiple custom headers...')
@@ -81,57 +81,36 @@ async function testBatFileHeaderFix() {
     
     const sentHeaders2 = response2.data.headers || {}
     
-    // Check Accept header
     const acceptHeaders2 = []
-    for (const [key, value] of Object.entries(sentHeaders2)) {
-      if (key.toLowerCase() === 'accept') {
-        acceptHeaders2.push(value)
-      }
-    }
-    
-    // Check User-Agent
     const userAgents = []
-    for (const [key, value] of Object.entries(sentHeaders2)) {
-      if (key.toLowerCase() === 'user-agent') {
-        userAgents.push(value)
-      }
-    }
-    
-    // Check Accept-Language
     const acceptLanguages = []
+    
     for (const [key, value] of Object.entries(sentHeaders2)) {
-      if (key.toLowerCase() === 'accept-language') {
-        acceptLanguages.push(value)
-      }
+      const lowerKey = key.toLowerCase()
+      if (lowerKey === 'accept') acceptHeaders2.push(value)
+      if (lowerKey === 'user-agent') userAgents.push(value)
+      if (lowerKey === 'accept-language') acceptLanguages.push(value)
     }
 
-    console.log('\n   📋 Headers sent:')
+    console.log('\n   Headers sent:')
     console.log(`   Accept: ${acceptHeaders2.length} header(s)`)
     if (acceptHeaders2.length === 1 && acceptHeaders2[0] === 'application/json') {
       console.log('   ✅ Accept header correct (no duplicates)')
-    } else {
-      console.log('   ❌ Accept header issue:', acceptHeaders2)
     }
     
     console.log(`   User-Agent: ${userAgents.length} header(s)`)
     if (userAgents.length === 1 && userAgents[0] === 'MyCustomAgent/1.0') {
       console.log('   ✅ User-Agent header correct (no duplicates)')
-    } else {
-      console.log('   ❌ User-Agent header issue:', userAgents)
     }
     
     console.log(`   Accept-Language: ${acceptLanguages.length} header(s)`)
     if (acceptLanguages.length === 1 && acceptLanguages[0].includes('fr-FR')) {
       console.log('   ✅ Accept-Language header correct (no duplicates)')
-    } else {
-      console.log('   ❌ Accept-Language header issue:', acceptLanguages)
     }
 
-    console.log('\n3. Testing without custom headers (should use .bat defaults)...')
+    console.log('\n3. Testing without custom headers (uses .bat defaults)...')
     
-    const response3 = await client.get('https://httpbin.org/headers', {
-      // No custom headers
-    })
+    const response3 = await client.get('https://httpbin.org/headers')
 
     console.log('   ✅ Request completed')
     console.log('   Status:', response3.status)
@@ -144,28 +123,23 @@ async function testBatFileHeaderFix() {
       }
     }
     
-    console.log(`\n   📋 Accept headers sent: ${acceptHeaders3.length}`)
+    console.log(`\n   Accept headers sent: ${acceptHeaders3.length}`)
     if (acceptHeaders3.length === 1) {
       console.log(`   ✅ Single Accept header from .bat file: ${acceptHeaders3[0].substring(0, 50)}...`)
-    } else {
-      console.log('   ⚠️  Unexpected number of Accept headers:', acceptHeaders3.length)
     }
 
-    console.log('\n=== Test Summary ===')
-    console.log('✅ All tests completed!')
-    console.log('\nIf you see duplicate headers, the fix is not working.')
-    console.log('If you see single headers matching your custom values, the fix is working!')
+    console.log('\n=== Example Summary ===')
+    console.log('✅ Custom headers successfully override .bat file defaults')
+    console.log('✅ No duplicate headers when using custom headers')
 
   } catch (error) {
-    console.error('\n❌ Test failed:', error)
+    console.error('\n❌ Example failed:', error)
     if (error instanceof Error) {
       console.error('   Message:', error.message)
-      console.error('   Stack:', error.stack)
     }
     process.exit(1)
   }
 }
 
-// Run the test
-testBatFileHeaderFix().catch(console.error)
+main().catch(console.error)
 

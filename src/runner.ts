@@ -60,22 +60,20 @@ function parseBatFile(batFilePath: string): string[] {
       }
 
       if (lineContent) {
-        // Check if inside quotes
         const quoteCount = (accumulated.match(/"/g) || []).length
         const inQuotes = quoteCount % 2 === 1
 
         if (accumulated) {
           if (inQuotes) {
-            accumulated += lineContent // No space inside quotes
+            accumulated += lineContent
           } else {
-            accumulated += ' ' + lineContent // Space between arguments
+            accumulated += ' ' + lineContent
           }
         } else {
           accumulated = lineContent
         }
       }
 
-      // Process if no continuation
       if (!hasContinuation) {
         if (accumulated.trim()) {
           const parsed = parseBatArguments(accumulated.trim())
@@ -112,13 +110,10 @@ function parseBatArguments(line: string): string[] {
       if (!inQuotes) {
         inQuotes = true
         quoteChar = char
-        // Don't add opening quote - we'll strip outer quotes later
       } else if (char === quoteChar) {
         inQuotes = false
         quoteChar = ''
-        // Don't add closing quote - we'll strip outer quotes later
       } else {
-        // Different quote type inside quotes - keep it
         current += char
       }
     } else if (char === ' ' && !inQuotes) {
@@ -126,7 +121,6 @@ function parseBatArguments(line: string): string[] {
         args.push(current)
         current = ''
       }
-      // Skip multiple spaces
       while (i + 1 < line.length && line[i + 1] === ' ') {
         i++
       }
@@ -155,10 +149,8 @@ function extractHeaderNamesFromArgs(args: string[]): Set<string> {
   while (i < args.length) {
     const arg = args[i]
 
-    // Check if this is a header flag
     if (arg === '-H' && i + 1 < args.length) {
       const headerValue = args[i + 1]
-      // Extract header name (case-insensitive)
       const headerMatch = headerValue.match(/^["']?([^:]+):/i)
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
@@ -168,7 +160,6 @@ function extractHeaderNamesFromArgs(args: string[]): Set<string> {
       continue
     }
 
-    // Check if it's a combined -H "Header: value" format
     if (arg.startsWith('-H')) {
       const headerMatch = arg.match(/^["']?([^:]+):/i)
       if (headerMatch) {
@@ -199,34 +190,28 @@ function filterConflictingHeaders(
   while (i < batArgs.length) {
     const arg = batArgs[i]
 
-    // Check if this is a header flag
     if (arg === '-H' && i + 1 < batArgs.length) {
       const headerValue = batArgs[i + 1]
-      // Extract header name (case-insensitive)
       const headerMatch = headerValue.match(/^["']?([^:]+):/i)
 
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
 
-        // If user provided this header, skip it (remove from .bat)
         if (userHeaderNames.has(headerName)) {
-          i += 2 // Skip both -H and the header value
+          i += 2
           continue
         }
       }
 
-      // Keep this header
       filtered.push(arg)
       i++
       continue
     }
 
-    // Check if it's a combined -H "Header: value" format
     if (arg.startsWith('-H')) {
       const headerMatch = arg.match(/^["']?([^:]+):/i)
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
-        // If user provided this header, skip it
         if (userHeaderNames.has(headerName)) {
           i++
           continue
@@ -247,12 +232,7 @@ export function runBinary(
   opts?: { timeout?: number; signal?: AbortSignal; stdin?: string | Buffer }
 ): Promise<RunResult> {
   return new Promise((resolve, reject) => {
-    // On Windows, .bat files need shell: true to execute properly
     const isWindows = process.platform === 'win32'
-
-    // Remove any existing quotes first to properly detect .bat files
-    // This handles cases where paths are incorrectly quoted before being passed in
-    // Use two separate replacements to ensure all leading and trailing quotes are removed
     const cleanPath = binPath.replace(/^["']+/, '').replace(/["']+$/, '')
     const isBatFile = cleanPath.toLowerCase().endsWith('.bat')
 
@@ -260,22 +240,18 @@ export function runBinary(
     let finalArgs = args
     let needsShell = false
 
-    // Handle .bat files by extracting arguments and using curl.exe directly
     if (isWindows && isBatFile) {
       try {
-        // Use Windows path handling for proper path resolution
         const batDir = path.win32.dirname(cleanPath)
         const searchedPaths: string[] = []
         let curlExePath: string | null = null
 
-        // Try 1: Same directory as .bat file
         let candidatePath = path.win32.join(batDir, 'curl.exe')
         searchedPaths.push(candidatePath)
         if (fs.existsSync(candidatePath)) {
           curlExePath = candidatePath
         }
 
-        // Try 2: Parent directory (for bin/ subdirectory structure)
         if (!curlExePath) {
           const parentDir = path.win32.dirname(batDir)
           candidatePath = path.win32.join(parentDir, 'curl.exe')
@@ -285,7 +261,6 @@ export function runBinary(
           }
         }
 
-        // Try 3: Case-insensitive search in the same directory
         if (!curlExePath) {
           try {
             const files = fs.readdirSync(batDir)
@@ -293,89 +268,56 @@ export function runBinary(
             if (curlExe) {
               curlExePath = path.win32.join(batDir, curlExe)
             }
-          } catch (dirError) {
-            // Directory read failed, continue
+          } catch {
+            // Directory read failed
           }
         }
 
         if (curlExePath && fs.existsSync(curlExePath)) {
-          // Extract user-provided headers from args
           const userHeaderNames = extractHeaderNamesFromArgs(args)
-
-          // Parse .bat file to extract arguments
           const batArgs = parseBatFile(cleanPath)
-
-          // Filter out headers from .bat that conflict with user headers
           const filteredBatArgs = filterConflictingHeaders(batArgs, userHeaderNames)
-
-          // Combine: bat args first, then user args (user args override bat defaults)
           finalArgs = [...filteredBatArgs, ...args]
-
-          // Use curl.exe directly instead of .bat file
           actualBinPath = curlExePath
-          needsShell = false // .exe files don't need shell
+          needsShell = false
         } else {
-          // Fallback: curl.exe not found, use .bat file (with potential duplicate header issue)
           console.warn(
             `[cuimp] curl.exe not found. Searched in: ${searchedPaths.join(', ')}. Falling back to .bat file. This may cause duplicate headers.`
           )
           needsShell = true
         }
       } catch (error) {
-        // If parsing fails, fallback to using .bat file
         const errorMsg = error instanceof Error ? error.message : String(error)
         console.warn(`[cuimp] Failed to parse .bat file, using fallback: ${errorMsg}`)
         needsShell = true
       }
     }
 
-    // On Windows, add --cacert argument if CA bundle exists and not already specified
-    // This fixes SSL certificate verification issues
     if (isWindows && !finalArgs.includes('--cacert') && !finalArgs.includes('-k')) {
       const binDir = path.dirname(actualBinPath)
       const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt')
       if (fs.existsSync(caBundlePath)) {
-        // Prepend --cacert to args so it's processed before the URL
         finalArgs = ['--cacert', caBundlePath, ...finalArgs]
       }
     }
 
-    // When using shell: true on Windows, normalize the path first
-    // This handles forward slashes, relative paths, and ensures proper formatting
     if (needsShell) {
-      // Normalize the path: resolve relative paths and normalize separators
       let normalizedPath = actualBinPath
-
-      // Check if it's a Windows absolute path (drive letter like D:\ or D:/)
-      // This check works even when running on non-Windows systems
       const isWindowsAbsolutePath = /^[A-Za-z]:[\\/]/.test(normalizedPath)
-
-      // Only resolve relative paths that contain directory separators
-      // Bare filenames (like "curl_edge101.bat") should be left for PATH resolution
       const hasPathSeparator = /[\\/]/.test(normalizedPath)
 
       if (!isWindowsAbsolutePath && !path.isAbsolute(normalizedPath) && hasPathSeparator) {
-        // This is a relative path with directory separators (e.g., "./binaries/curl_edge101.bat")
-        // Resolve it to an absolute path
         normalizedPath = path.resolve(normalizedPath)
       } else if (isWindowsAbsolutePath || path.isAbsolute(normalizedPath)) {
-        // Normalize absolute paths (handles forward/back slashes on Windows)
-        // Use path.win32.normalize for Windows paths to ensure proper handling
         if (isWindowsAbsolutePath) {
           normalizedPath = path.win32.normalize(normalizedPath)
         } else {
           normalizedPath = path.normalize(normalizedPath)
         }
       }
-      // If it's a bare filename (no path separators), leave it as-is for PATH resolution
 
       actualBinPath = normalizedPath
     }
-
-    // - & | < > ^ : command operators and redirection
-    // - " : quotes (escaped as "" inside quotes)
-    // - % ! : variable expansion (even inside quotes if enabled)
-    // - \s : whitespace (path/argument separators)
     if (needsShell) {
       finalArgs = finalArgs.map(arg => {
         if (/[&|<>^"%!\s]/.test(arg)) {

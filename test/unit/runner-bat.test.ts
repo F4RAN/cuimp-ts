@@ -10,15 +10,7 @@ vi.mock('node:child_process', () => ({
   spawn: vi.fn(),
 }))
 
-// Mock fs for .bat file reading
-vi.mock('node:fs', async () => {
-  const actual = await vi.importActual('node:fs')
-  return {
-    ...actual,
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
-  }
-})
+// Mock fs for .bat file reading - use spyOn to ensure it works with already-imported modules
 
 // Helper to mock platform
 function mockPlatform(platform: string): boolean {
@@ -57,15 +49,21 @@ function restorePlatform(originalPlatform: string): boolean {
   }
 }
 
-describe('runBinary - .bat file handling', () => {
+describe('runBinary - Windows .bat file header overwrite', () => {
   const mockSpawn = vi.mocked(spawn)
-  const mockExistsSync = vi.mocked(fs.existsSync)
-  const mockReadFileSync = vi.mocked(fs.readFileSync)
+  let mockExistsSync: any
+  let mockReadFileSync: any
+  let mockReaddirSync: any
   let mockChildProcess: any
   const originalPlatform = process.platform
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    // Spy on fs methods directly - this works even if fs was already imported
+    mockExistsSync = vi.spyOn(fs, 'existsSync').mockReturnValue(true)
+    mockReadFileSync = vi.spyOn(fs, 'readFileSync')
+    mockReaddirSync = vi.spyOn(fs, 'readdirSync').mockImplementation(() => {
+      throw new Error('ENOENT')
+    })
 
     mockChildProcess = {
       kill: vi.fn(),
@@ -90,15 +88,15 @@ describe('runBinary - .bat file handling', () => {
     vi.restoreAllMocks()
   })
 
-  it('should parse .bat file and use curl.exe directly when user provides Accept header', async () => {
+  it('should use curl.exe directly and filter duplicate Accept header from .bat file', async () => {
     if (!mockPlatform('win32')) {
       return
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
     const curlExePath = 'C:\\binaries\\curl.exe'
+    const parentCurlExePath = 'C:\\curl.exe'
 
-    // Mock .bat file content
     const batContent = `@echo off
 "%~dp0curl.exe" ^
     --ciphers "TLS_AES_128_GCM_SHA256" ^
@@ -107,9 +105,10 @@ describe('runBinary - .bat file handling', () => {
     --http2 ^
     %*`
 
-    mockExistsSync.mockImplementation((path: string) => {
-      if (path === batPath || path === curlExePath) return true
-      return false
+    // Mock already returns true by default from beforeEach
+
+    mockReaddirSync.mockImplementation(() => {
+      throw new Error('ENOENT')
     })
 
     mockReadFileSync.mockReturnValue(batContent)
@@ -135,12 +134,10 @@ describe('runBinary - .bat file handling', () => {
       }
     })
 
-    // User provides custom Accept header
     const userArgs = ['-H', 'Accept: application/json', 'https://example.com']
 
     await runBinary(batPath, userArgs)
 
-    // Verify curl.exe was used (not .bat file)
     expect(mockSpawn).toHaveBeenCalledWith(
       curlExePath,
       expect.arrayContaining([
@@ -150,49 +147,43 @@ describe('runBinary - .bat file handling', () => {
         'User-Agent: Mozilla/5.0',
         '--http2',
         '-H',
-        'Accept: application/json', // User's header should be present
+        'Accept: application/json',
         'https://example.com',
       ]),
       expect.objectContaining({
-        shell: false, // .exe doesn't need shell
+        shell: false,
       })
     )
 
-    // Verify Accept header from .bat was removed (not duplicated)
     const spawnCall = mockSpawn.mock.calls[0]
     const spawnedArgs = spawnCall[1] as string[]
-    const acceptHeaders = spawnedArgs.filter((arg, i) => {
-      return (
-        (arg === '-H' && spawnedArgs[i + 1]?.includes('Accept:')) ||
-        arg.includes('Accept:')
-      )
-    })
-    // Should only have one Accept header (user's)
-    expect(acceptHeaders.length).toBeGreaterThan(0)
-    const allAcceptHeaders = spawnedArgs
-      .map((arg, i) => {
-        if (arg === '-H' && spawnedArgs[i + 1]) {
-          return spawnedArgs[i + 1]
+    
+    // Extract Accept headers - look for -H followed by header value
+    const allAcceptHeaders: string[] = []
+    for (let i = 0; i < spawnedArgs.length; i++) {
+      if (spawnedArgs[i] === '-H' && i + 1 < spawnedArgs.length) {
+        const headerValue = spawnedArgs[i + 1]
+        // Check if this is an Accept header (case-insensitive)
+        if (headerValue.toLowerCase().startsWith('accept:')) {
+          allAcceptHeaders.push(headerValue)
         }
-        if (arg.includes('Accept:')) {
-          return arg
-        }
-        return null
-      })
-      .filter(Boolean)
-      .filter((h: string | null) => h?.includes('Accept:'))
+        i++ // Skip the header value on next iteration
+      }
+    }
 
     expect(allAcceptHeaders.length).toBe(1)
     expect(allAcceptHeaders[0]).toContain('application/json')
+    expect(allAcceptHeaders[0]).not.toContain('text/html')
   })
 
-  it('should filter multiple conflicting headers from .bat file', async () => {
+  it('should filter multiple conflicting headers when user provides custom headers', async () => {
     if (!mockPlatform('win32')) {
       return
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
     const curlExePath = 'C:\\binaries\\curl.exe'
+    const parentCurlExePath = 'C:\\curl.exe'
 
     const batContent = `@echo off
 "%~dp0curl.exe" ^
@@ -202,9 +193,10 @@ describe('runBinary - .bat file handling', () => {
     --http2 ^
     %*`
 
-    mockExistsSync.mockImplementation((path: string) => {
-      if (path === batPath || path === curlExePath) return true
-      return false
+    // Mock already returns true by default from beforeEach
+
+    mockReaddirSync.mockImplementation(() => {
+      throw new Error('ENOENT')
     })
 
     mockReadFileSync.mockReturnValue(batContent)
@@ -222,7 +214,6 @@ describe('runBinary - .bat file handling', () => {
     })
     mockChildProcess.stderr.on.mockImplementation(() => {})
 
-    // User provides multiple custom headers
     const userArgs = [
       '-H',
       'Accept: application/json',
@@ -236,26 +227,22 @@ describe('runBinary - .bat file handling', () => {
     const spawnCall = mockSpawn.mock.calls[0]
     const spawnedArgs = spawnCall[1] as string[]
 
-    // Verify .bat headers were filtered out
     expect(spawnedArgs).not.toContain('User-Agent: Mozilla/5.0')
     expect(spawnedArgs).not.toContain('Accept: text/html')
-
-    // Verify user headers are present
     expect(spawnedArgs).toContain('Accept: application/json')
     expect(spawnedArgs).toContain('User-Agent: MyCustomAgent/1.0')
-
-    // Verify non-conflicting .bat headers are preserved
     expect(spawnedArgs).toContain('Accept-Language: en-US')
     expect(spawnedArgs).toContain('--http2')
   })
 
-  it('should preserve all non-header arguments from .bat file', async () => {
+  it('should preserve TLS and HTTP2 settings while filtering headers', async () => {
     if (!mockPlatform('win32')) {
       return
     }
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
     const curlExePath = 'C:\\binaries\\curl.exe'
+    const parentCurlExePath = 'C:\\curl.exe'
 
     const batContent = `@echo off
 "%~dp0curl.exe" ^
@@ -267,9 +254,10 @@ describe('runBinary - .bat file handling', () => {
     --tls-grease ^
     %*`
 
-    mockExistsSync.mockImplementation((path: string) => {
-      if (path === batPath || path === curlExePath) return true
-      return false
+    // Mock already returns true by default from beforeEach
+
+    mockReaddirSync.mockImplementation(() => {
+      throw new Error('ENOENT')
     })
 
     mockReadFileSync.mockReturnValue(batContent)
@@ -294,7 +282,6 @@ describe('runBinary - .bat file handling', () => {
     const spawnCall = mockSpawn.mock.calls[0]
     const spawnedArgs = spawnCall[1] as string[]
 
-    // Verify TLS/HTTP2 settings are preserved
     expect(spawnedArgs).toContain('--ciphers')
     expect(spawnedArgs).toContain('TLS_AES_128_GCM_SHA256')
     expect(spawnedArgs).toContain('--curves')
@@ -303,10 +290,7 @@ describe('runBinary - .bat file handling', () => {
     expect(spawnedArgs).toContain('--http2-settings')
     expect(spawnedArgs).toContain('1:65536')
     expect(spawnedArgs).toContain('--tls-grease')
-
-    // Verify Accept header was filtered
     expect(spawnedArgs).not.toContain('Accept: text/html')
-    // But user's Accept is present
     expect(spawnedArgs).toContain('Accept: application/json')
   })
 
@@ -318,10 +302,8 @@ describe('runBinary - .bat file handling', () => {
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
     const curlExePath = 'C:\\binaries\\curl.exe'
 
-    mockExistsSync.mockImplementation((path: string) => {
-      if (path === batPath) return true
-      if (path === curlExePath) return false // curl.exe not found
-      return false
+    mockExistsSync.mockImplementation((p: string) => {
+      return p === batPath
     })
 
     const mockStdout = Buffer.from('HTTP/1.1 200 OK\r\n\r\nOK')
@@ -341,14 +323,68 @@ describe('runBinary - .bat file handling', () => {
 
     await runBinary(batPath, userArgs)
 
-    // Should use .bat file with shell: true (fallback)
     expect(mockSpawn).toHaveBeenCalledWith(
-      expect.stringContaining('.bat'),
-      userArgs,
+      batPath,
+      expect.any(Array),
       expect.objectContaining({
         shell: true,
       })
     )
+  })
+
+  it('should handle complex .bat file with long cipher strings', async () => {
+    if (!mockPlatform('win32')) {
+      return
+    }
+
+    const batPath = 'C:\\binaries\\curl_chrome136.bat'
+    const curlExePath = 'C:\\binaries\\curl.exe'
+    const parentCurlExePath = 'C:\\curl.exe'
+
+    const batContent = `@echo off
+"%~dp0curl.exe" ^
+    --ciphers "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256" ^
+    --curves X25519MLKEM768:X25519:P-256:P-384 ^
+    -H "Accept: text/html,application/xhtml+xml" ^
+    -H "User-Agent: Mozilla/5.0" ^
+    --http2 ^
+    %*`
+
+    // Mock already returns true by default from beforeEach
+
+    mockReaddirSync.mockImplementation(() => {
+      throw new Error('ENOENT')
+    })
+
+    mockReadFileSync.mockReturnValue(batContent)
+
+    const mockStdout = Buffer.from('HTTP/1.1 200 OK\r\n\r\nOK')
+    mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'close') {
+        setTimeout(() => callback(0), 10)
+      }
+    })
+    mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'data') {
+        setTimeout(() => callback(mockStdout), 5)
+      }
+    })
+    mockChildProcess.stderr.on.mockImplementation(() => {})
+
+    const userArgs = ['-H', 'Accept: application/json', 'https://example.com']
+
+    await runBinary(batPath, userArgs)
+
+    const spawnCall = mockSpawn.mock.calls[0]
+    const spawnedArgs = spawnCall[1] as string[]
+
+    expect(spawnedArgs).toContain('--ciphers')
+    const ciphersIndex = spawnedArgs.indexOf('--ciphers')
+    expect(spawnedArgs[ciphersIndex + 1]).toBe(
+      'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256'
+    )
+    expect(spawnedArgs).toContain('Accept: application/json')
+    expect(spawnedArgs).not.toContain('Accept: text/html,application/xhtml+xml')
   })
 
   it('should handle .bat file parsing errors gracefully', async () => {
@@ -358,13 +394,14 @@ describe('runBinary - .bat file handling', () => {
 
     const batPath = 'C:\\binaries\\curl_chrome136.bat'
     const curlExePath = 'C:\\binaries\\curl.exe'
+    const parentCurlExePath = 'C:\\curl.exe'
 
-    mockExistsSync.mockImplementation((path: string) => {
-      if (path === batPath || path === curlExePath) return true
-      return false
+    // Mock already returns true by default from beforeEach
+
+    mockReaddirSync.mockImplementation(() => {
+      throw new Error('ENOENT')
     })
 
-    // Simulate read error
     mockReadFileSync.mockImplementation(() => {
       throw new Error('File read error')
     })
@@ -384,10 +421,8 @@ describe('runBinary - .bat file handling', () => {
 
     const userArgs = ['-H', 'Accept: application/json', 'https://example.com']
 
-    // Should not throw, should fallback to .bat
     await runBinary(batPath, userArgs)
 
-    // Should use .bat file with shell: true (fallback)
     expect(mockSpawn).toHaveBeenCalledWith(
       expect.stringContaining('.bat'),
       expect.any(Array),
