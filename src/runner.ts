@@ -46,7 +46,24 @@ function parseBatFile(batFilePath: string): string[] {
       // Extract everything after curl.exe (handle @ prefix)
       const match = line.match(/(?:.*?"%~dp0curl\.exe"|.*?curl\.exe)\s*(.*)$/)
       if (match && match[1]) {
-        accumulated = match[1].replace(/\s*\^\s*$/, '')
+        let extracted = match[1].replace(/\s*\^\s*$/, '')
+        
+        // Check if %* is on the same line as curl.exe
+        if (extracted.includes('%*')) {
+          // Extract only content before %*
+          const beforePercent = extracted.split('%*')[0].trim()
+          if (beforePercent) {
+            accumulated = beforePercent
+            // Process accumulated content
+            if (accumulated.trim()) {
+              const parsed = parseBatArguments(accumulated.trim())
+              args.push(...parsed)
+            }
+          }
+          break
+        } else {
+          accumulated = extracted
+        }
       } else {
         accumulated = ''
       }
