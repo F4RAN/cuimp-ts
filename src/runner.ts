@@ -29,16 +29,23 @@ function parseBatFile(batFilePath: string): string[] {
     // Check if this line starts the curl.exe command
     if (trimmed.includes('curl.exe') || trimmed.includes('"%~dp0curl.exe"')) {
       inCurlCommand = true
-      // Extract everything after curl.exe, removing line continuation if present
-      let afterCurl = trimmed.replace(/.*?"%~dp0curl\.exe"|.*?curl\.exe/, '').trim()
-      // Remove line continuation character if present
-      if (afterCurl.endsWith('^')) {
-        afterCurl = afterCurl.slice(0, -1).trim()
+      // Extract everything after curl.exe
+      let afterCurl = trimmed.replace(/.*?"%~dp0curl\.exe"|.*?curl\.exe/, '')
+      // Check if line has continuation - don't trim if it does (preserve spacing)
+      const hasContinuation = afterCurl.trim().endsWith('^')
+      if (hasContinuation) {
+        // Remove the ^ but preserve the rest (don't trim, might be inside quotes)
+        afterCurl = afterCurl.replace(/\s*\^\s*$/, '')
+      } else {
+        afterCurl = afterCurl.trim()
       }
       if (afterCurl) {
         currentLine = afterCurl
       }
-      continue
+      // If there's a continuation, continue to next iteration to process the next line
+      if (hasContinuation) {
+        continue
+      }
     }
 
     // If we're in the curl command section
@@ -71,7 +78,7 @@ function parseBatFile(batFilePath: string): string[] {
             // Not inside quotes, add space to separate arguments
             currentLine += ' ' + lineContent
           } else {
-            // Inside quotes, join directly (no space)
+            // Inside quotes, join directly (no space) - preserve quoted strings across lines
             currentLine += lineContent
           }
         } else {
