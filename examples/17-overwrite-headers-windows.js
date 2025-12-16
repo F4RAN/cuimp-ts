@@ -54,11 +54,11 @@ async function main() {
     }
 
     console.log('\n   Accept headers sent:')
-    if (acceptHeaders.length === 1) {
+    if (acceptHeaders.length === 1 && acceptHeaders[0] === 'application/json') {
       console.log(`   ✅ Single Accept header: ${acceptHeaders[0]}`)
-      if (acceptHeaders[0] === 'application/json') {
-        console.log('   ✅ Correct! Only user-provided Accept header is present')
-      }
+      console.log('   ✅ Correct! Only user-provided Accept header is present')
+    } else if (acceptHeaders.length === 0) {
+      console.log('   ❌ No Accept headers found')
     } else {
       console.log(`   ❌ DUPLICATE Accept headers found (${acceptHeaders.length}):`)
       acceptHeaders.forEach((header, i) => {
@@ -93,19 +93,22 @@ async function main() {
     }
 
     console.log('\n   Headers sent:')
-    console.log(`   Accept: ${acceptHeaders2.length} header(s)`)
     if (acceptHeaders2.length === 1 && acceptHeaders2[0] === 'application/json') {
-      console.log('   ✅ Accept header correct (no duplicates)')
+      console.log('   ✅ Accept: application/json (no duplicates)')
+    } else {
+      console.log(`   ❌ Accept: ${acceptHeaders2.length} header(s) - Expected 1`)
     }
-    
-    console.log(`   User-Agent: ${userAgents.length} header(s)`)
+
     if (userAgents.length === 1 && userAgents[0] === 'MyCustomAgent/1.0') {
-      console.log('   ✅ User-Agent header correct (no duplicates)')
+      console.log('   ✅ User-Agent: MyCustomAgent/1.0 (no duplicates)')
+    } else {
+      console.log(`   ❌ User-Agent: ${userAgents.length} header(s) - Expected 1`)
     }
-    
-    console.log(`   Accept-Language: ${acceptLanguages.length} header(s)`)
+
     if (acceptLanguages.length === 1 && acceptLanguages[0].includes('fr-FR')) {
-      console.log('   ✅ Accept-Language header correct (no duplicates)')
+      console.log('   ✅ Accept-Language: fr-FR,fr;q=0.9 (no duplicates)')
+    } else {
+      console.log(`   ❌ Accept-Language: ${acceptLanguages.length} header(s) - Expected 1`)
     }
 
     console.log('\n3. Testing without custom headers (uses .bat defaults)...')
@@ -125,7 +128,9 @@ async function main() {
     
     console.log(`\n   Accept headers sent: ${acceptHeaders3.length}`)
     if (acceptHeaders3.length === 1) {
-      console.log(`   ✅ Single Accept header from .bat file: ${acceptHeaders3[0].substring(0, 50)}...`)
+      const headerValue = String(acceptHeaders3[0])
+      const preview = headerValue.length > 50 ? headerValue.substring(0, 50) + '...' : headerValue
+      console.log(`   ✅ Single Accept header from .bat file: ${preview}`)
     }
 
     console.log('\n=== Example Summary ===')
