@@ -241,30 +241,42 @@ export function runBinary(
     // Handle .bat files by extracting arguments and using curl.exe directly
     if (isWindows && isBatFile) {
       try {
-        // Find curl.exe - check multiple locations
-        const batDir = path.dirname(cleanPath)
-        let curlExePath = path.join(batDir, 'curl.exe')
+        // Use Windows path handling for proper path resolution
+        const batDir = path.win32.dirname(cleanPath)
+        const searchedPaths: string[] = []
+        let curlExePath: string | null = null
 
-        // If not found in same directory, check parent directory (for bin/ subdirectory structure)
-        if (!fs.existsSync(curlExePath)) {
-          const parentDir = path.dirname(batDir)
-          curlExePath = path.join(parentDir, 'curl.exe')
+        // Try 1: Same directory as .bat file
+        let candidatePath = path.win32.join(batDir, 'curl.exe')
+        searchedPaths.push(candidatePath)
+        if (fs.existsSync(candidatePath)) {
+          curlExePath = candidatePath
         }
 
-        // Also try case-insensitive search in the same directory
-        if (!fs.existsSync(curlExePath)) {
+        // Try 2: Parent directory (for bin/ subdirectory structure)
+        if (!curlExePath) {
+          const parentDir = path.win32.dirname(batDir)
+          candidatePath = path.win32.join(parentDir, 'curl.exe')
+          searchedPaths.push(candidatePath)
+          if (fs.existsSync(candidatePath)) {
+            curlExePath = candidatePath
+          }
+        }
+
+        // Try 3: Case-insensitive search in the same directory
+        if (!curlExePath) {
           try {
             const files = fs.readdirSync(batDir)
             const curlExe = files.find(f => f.toLowerCase() === 'curl.exe')
             if (curlExe) {
-              curlExePath = path.join(batDir, curlExe)
+              curlExePath = path.win32.join(batDir, curlExe)
             }
-          } catch {
-            // Directory read failed, continue with path-based search
+          } catch (dirError) {
+            // Directory read failed, continue
           }
         }
 
-        if (fs.existsSync(curlExePath)) {
+        if (curlExePath && fs.existsSync(curlExePath)) {
           // Extract user-provided headers from args
           const userHeaderNames = extractHeaderNamesFromArgs(args)
 
@@ -283,13 +295,14 @@ export function runBinary(
         } else {
           // Fallback: curl.exe not found, use .bat file (with potential duplicate header issue)
           console.warn(
-            `curl.exe not found. Searched in: ${path.join(batDir, 'curl.exe')}, ${path.join(path.dirname(batDir), 'curl.exe')}. Falling back to .bat file.`
+            `[cuimp] curl.exe not found. Searched in: ${searchedPaths.join(', ')}. Falling back to .bat file. This may cause duplicate headers.`
           )
           needsShell = true
         }
       } catch (error) {
         // If parsing fails, fallback to using .bat file
-        console.warn(`Failed to parse .bat file, using fallback: ${error}`)
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.warn(`[cuimp] Failed to parse .bat file, using fallback: ${errorMsg}`)
         needsShell = true
       }
     }
