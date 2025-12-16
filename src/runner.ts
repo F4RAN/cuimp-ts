@@ -21,15 +21,29 @@ function parseBatFile(batFilePath: string): string[] {
   for (const line of lines) {
     const trimmed = line.trim()
 
-    // Skip comments and empty lines
-    if (trimmed.startsWith('::') || trimmed.startsWith('@') || !trimmed) {
+    // Skip empty lines
+    if (!trimmed) {
       continue
     }
 
-    // Check if this line starts the curl.exe command
+    // Skip comments (::) but allow @-prefixed curl commands
+    if (trimmed.startsWith('::')) {
+      continue
+    }
+
+    // Skip @echo and other @ commands, but allow @-prefixed curl commands
+    if (
+      trimmed.startsWith('@') &&
+      !trimmed.includes('curl.exe') &&
+      !trimmed.includes('"%~dp0curl.exe"')
+    ) {
+      continue
+    }
+
+    // Check if this line starts the curl.exe command (may be prefixed with @)
     if (trimmed.includes('curl.exe') || trimmed.includes('"%~dp0curl.exe"')) {
       inCurlCommand = true
-      // Extract everything after curl.exe
+      // Extract everything after curl.exe (handle @ prefix)
       const match = line.match(/(?:.*?"%~dp0curl\.exe"|.*?curl\.exe)\s*(.*)$/)
       if (match && match[1]) {
         accumulated = match[1].replace(/\s*\^\s*$/, '')
