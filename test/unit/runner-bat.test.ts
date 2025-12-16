@@ -157,7 +157,7 @@ describe('runBinary - Windows .bat file header overwrite', () => {
 
     const spawnCall = mockSpawn.mock.calls[0]
     const spawnedArgs = spawnCall[1] as string[]
-    
+
     // Extract Accept headers - look for -H followed by header value
     const allAcceptHeaders: string[] = []
     for (let i = 0; i < spawnedArgs.length; i++) {
@@ -432,4 +432,3 @@ describe('runBinary - Windows .bat file header overwrite', () => {
     )
   })
 })
-

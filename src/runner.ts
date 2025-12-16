@@ -52,7 +52,7 @@ function parseBatFile(batFilePath: string): string[] {
       // Check for line continuation
       const hasContinuation = line.trimEnd().endsWith('^')
       let lineContent = line.replace(/^\s+/, '') // Remove leading spaces
-      
+
       if (hasContinuation) {
         lineContent = lineContent.replace(/\s*\^\s*$/, '')
       } else {
@@ -180,10 +180,7 @@ function extractHeaderNamesFromArgs(args: string[]): Set<string> {
  * @param userHeaderNames Set of header names provided by the user (lowercase)
  * @returns Filtered arguments without conflicting headers
  */
-function filterConflictingHeaders(
-  batArgs: string[],
-  userHeaderNames: Set<string>
-): string[] {
+function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string>): string[] {
   const filtered: string[] = []
   let i = 0
 
