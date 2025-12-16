@@ -54,11 +54,16 @@ async function main() {
     }
 
     console.log('\n   Accept headers sent:')
-    if (acceptHeaders.length === 1 && acceptHeaders[0] === 'application/json') {
-      console.log(`   ✅ Single Accept header: ${acceptHeaders[0]}`)
-      console.log('   ✅ Correct! Only user-provided Accept header is present')
-    } else if (acceptHeaders.length === 0) {
+    if (acceptHeaders.length === 0) {
       console.log('   ❌ No Accept headers found')
+    } else if (acceptHeaders.length === 1) {
+      if (acceptHeaders[0] === 'application/json') {
+        console.log(`   ✅ Single Accept header: ${acceptHeaders[0]}`)
+        console.log('   ✅ Correct! Only user-provided Accept header is present')
+      } else {
+        console.log(`   ⚠️  Single Accept header but unexpected value: ${acceptHeaders[0]}`)
+        console.log('   Expected: application/json')
+      }
     } else {
       console.log(`   ❌ DUPLICATE Accept headers found (${acceptHeaders.length}):`)
       acceptHeaders.forEach((header, i) => {
