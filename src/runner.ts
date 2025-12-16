@@ -163,7 +163,8 @@ function extractHeaderNamesFromArgs(args: string[]): Set<string> {
   while (i < args.length) {
     const arg = args[i]
 
-    if (arg === '-H' && i + 1 < args.length) {
+    // Check for -H or --header flag with separate value
+    if ((arg === '-H' || arg === '--header') && i + 1 < args.length) {
       const headerValue = args[i + 1]
       const headerMatch = headerValue.match(/^["']?([^:]+):/i)
       if (headerMatch) {
@@ -174,8 +175,19 @@ function extractHeaderNamesFromArgs(args: string[]): Set<string> {
       continue
     }
 
-    if (arg.startsWith('-H')) {
-      const headerMatch = arg.match(/^["']?([^:]+):/i)
+    // Check for combined format: -HAccept: value or --headerAccept: value
+    if (arg.startsWith('-H') && arg.length > 2) {
+      // Combined format: extract everything after -H
+      const afterH = arg.substring(2) // Remove -H prefix
+      const headerMatch = afterH.match(/^["']?([^:]+):/i)
+      if (headerMatch) {
+        const headerName = headerMatch[1].trim().toLowerCase()
+        headerNames.add(headerName)
+      }
+    } else if (arg.startsWith('--header') && arg.length > 8) {
+      // Combined format with --header: extract everything after --header
+      const afterHeader = arg.substring(8) // Remove --header prefix
+      const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
         headerNames.add(headerName)
@@ -201,7 +213,8 @@ function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string
   while (i < batArgs.length) {
     const arg = batArgs[i]
 
-    if (arg === '-H' && i + 1 < batArgs.length) {
+    // Check for -H or --header flag with separate value
+    if ((arg === '-H' || arg === '--header') && i + 1 < batArgs.length) {
       const headerValue = batArgs[i + 1]
       const headerMatch = headerValue.match(/^["']?([^:]+):/i)
 
@@ -219,8 +232,22 @@ function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string
       continue
     }
 
-    if (arg.startsWith('-H')) {
-      const headerMatch = arg.match(/^["']?([^:]+):/i)
+    // Check for combined format: -HAccept: value or --headerAccept: value
+    if (arg.startsWith('-H') && arg.length > 2) {
+      // Combined format: extract everything after -H
+      const afterH = arg.substring(2) // Remove -H prefix
+      const headerMatch = afterH.match(/^["']?([^:]+):/i)
+      if (headerMatch) {
+        const headerName = headerMatch[1].trim().toLowerCase()
+        if (userHeaderNames.has(headerName)) {
+          i++
+          continue
+        }
+      }
+    } else if (arg.startsWith('--header') && arg.length > 8) {
+      // Combined format with --header: extract everything after --header
+      const afterHeader = arg.substring(8) // Remove --header prefix
+      const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
         if (userHeaderNames.has(headerName)) {
