@@ -57,17 +57,22 @@ async function main() {
     if (acceptHeaders.length === 0) {
       console.log('   ❌ No Accept headers found')
     } else if (acceptHeaders.length === 1) {
-      if (acceptHeaders[0] === 'application/json') {
-        console.log(`   ✅ Single Accept header: ${acceptHeaders[0]}`)
+      const headerValue = acceptHeaders[0]
+      const headerStr = Array.isArray(headerValue) ? headerValue.join(', ') : String(headerValue)
+
+      if (headerStr === 'application/json') {
+        console.log(`   ✅ Single Accept header: ${headerStr}`)
         console.log('   ✅ Correct! Only user-provided Accept header is present')
       } else {
-        console.log(`   ⚠️  Single Accept header but unexpected value: ${acceptHeaders[0]}`)
+        console.log(`   ⚠️  Single Accept header but unexpected value: ${headerStr}`)
+        console.log(`   Type: ${typeof headerValue}, IsArray: ${Array.isArray(headerValue)}`)
         console.log('   Expected: application/json')
       }
     } else {
       console.log(`   ❌ DUPLICATE Accept headers found (${acceptHeaders.length}):`)
       acceptHeaders.forEach((header, i) => {
-        console.log(`      ${i + 1}. ${header}`)
+        const headerStr = Array.isArray(header) ? header.join(', ') : String(header)
+        console.log(`      ${i + 1}. ${headerStr}`)
       })
     }
 
