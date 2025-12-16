@@ -56,6 +56,17 @@ function parseBatFile(batFilePath: string): string[] {
     if (inCurlCommand) {
       // Check for %*
       if (trimmed.includes('%*')) {
+        // Extract content before %* on the same line
+        const beforePercent = trimmed.split('%*')[0].trim()
+        if (beforePercent) {
+          // Add content before %* to accumulated
+          if (accumulated) {
+            accumulated += ' ' + beforePercent
+          } else {
+            accumulated = beforePercent
+          }
+        }
+        // Process accumulated content before breaking
         if (accumulated.trim()) {
           const parsed = parseBatArguments(accumulated.trim())
           args.push(...parsed)
@@ -184,13 +195,19 @@ function extractHeaderNamesFromArgs(args: string[]): Set<string> {
         const headerName = headerMatch[1].trim().toLowerCase()
         headerNames.add(headerName)
       }
-    } else if (arg.startsWith('--header') && arg.length > 8) {
-      // Combined format with --header: extract everything after --header
-      const afterHeader = arg.substring(8) // Remove --header prefix
-      const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
-      if (headerMatch) {
-        const headerName = headerMatch[1].trim().toLowerCase()
-        headerNames.add(headerName)
+    } else if (arg.startsWith('--header')) {
+      // Handle --header=Accept: value or --headerAccept: value format
+      let afterHeader = arg.substring(8) // Remove --header prefix
+      // Skip = if present (--header=Accept: value format)
+      if (afterHeader.startsWith('=')) {
+        afterHeader = afterHeader.substring(1)
+      }
+      if (afterHeader) {
+        const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
+        if (headerMatch) {
+          const headerName = headerMatch[1].trim().toLowerCase()
+          headerNames.add(headerName)
+        }
       }
     }
 
@@ -244,15 +261,21 @@ function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string
           continue
         }
       }
-    } else if (arg.startsWith('--header') && arg.length > 8) {
-      // Combined format with --header: extract everything after --header
-      const afterHeader = arg.substring(8) // Remove --header prefix
-      const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
-      if (headerMatch) {
-        const headerName = headerMatch[1].trim().toLowerCase()
-        if (userHeaderNames.has(headerName)) {
-          i++
-          continue
+    } else if (arg.startsWith('--header')) {
+      // Handle --header=Accept: value or --headerAccept: value format
+      let afterHeader = arg.substring(8) // Remove --header prefix
+      // Skip = if present (--header=Accept: value format)
+      if (afterHeader.startsWith('=')) {
+        afterHeader = afterHeader.substring(1)
+      }
+      if (afterHeader) {
+        const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
+        if (headerMatch) {
+          const headerName = headerMatch[1].trim().toLowerCase()
+          if (userHeaderNames.has(headerName)) {
+            i++
+            continue
+          }
         }
       }
     }
