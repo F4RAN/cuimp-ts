@@ -36,7 +36,7 @@ async function main() {
 
     console.log('1. Testing with custom Accept header...')
     
-    const response = await client.get('https://httpbin.org/headers', {
+    const response = await client.get('https://httpbingo.org/headers', {
       headers: {
         'Accept': 'application/json'
       }
@@ -68,7 +68,7 @@ async function main() {
 
     console.log('\n2. Testing with multiple custom headers...')
     
-    const response2 = await client.get('https://httpbin.org/headers', {
+    const response2 = await client.get('https://httpbingo.org/headers', {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'MyCustomAgent/1.0',
@@ -110,7 +110,7 @@ async function main() {
 
     console.log('\n3. Testing without custom headers (uses .bat defaults)...')
     
-    const response3 = await client.get('https://httpbin.org/headers')
+    const response3 = await client.get('https://httpbingo.org/headers')
 
     console.log('   ✅ Request completed')
     console.log('   Status:', response3.status)

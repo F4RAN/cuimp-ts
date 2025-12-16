@@ -58,6 +58,7 @@ function parseBatFile(batFilePath: string): string[] {
             if (accumulated.trim()) {
               const parsed = parseBatArguments(accumulated.trim())
               args.push(...parsed)
+              accumulated = '' // Clear accumulated to prevent double-processing
             }
           }
           break
@@ -100,6 +101,7 @@ function parseBatFile(batFilePath: string): string[] {
         if (accumulated.trim()) {
           const parsed = parseBatArguments(accumulated.trim())
           args.push(...parsed)
+          accumulated = '' // Clear accumulated to prevent double-processing
         }
         break
       }
