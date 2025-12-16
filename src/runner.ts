@@ -376,8 +376,12 @@ export function runBinary(
         if (curlExePath && fs.existsSync(curlExePath)) {
           const userHeaderNames = extractHeaderNamesFromArgs(args)
           const batArgs = parseBatFile(cleanPath)
+          console.log('[cuimp debug] Parsed .bat args:', batArgs)
           const filteredBatArgs = filterConflictingHeaders(batArgs, userHeaderNames)
+          console.log('[cuimp debug] Filtered .bat args:', filteredBatArgs)
+          console.log('[cuimp debug] User args:', args)
           finalArgs = [...filteredBatArgs, ...args]
+          console.log('[cuimp debug] Final args:', finalArgs)
           actualBinPath = curlExePath
           needsShell = false
         } else {
