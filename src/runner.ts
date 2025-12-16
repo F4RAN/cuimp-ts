@@ -46,7 +46,7 @@ function parseBatFile(batFilePath: string): string[] {
       // Extract everything after curl.exe (handle @ prefix)
       const match = line.match(/(?:.*?"%~dp0curl\.exe"|.*?curl\.exe)\s*(.*)$/)
       if (match && match[1]) {
-        let extracted = match[1].replace(/\s*\^\s*$/, '')
+        const extracted = match[1].replace(/\s*\^\s*$/, '')
 
         // Check if %* is on the same line as curl.exe
         if (extracted.includes('%*')) {
