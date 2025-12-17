@@ -415,21 +415,6 @@ export function runBinary(
         if (curlExePath && fs.existsSync(curlExePath)) {
           const batArgs = parseBatFile(cleanPath)
           finalArgs = mergeHeaderArguments(batArgs, args)
-
-          // Temporary debug: Show header order being sent to curl
-          console.log('[DEBUG] Headers being sent to curl (in order):')
-          for (let i = 0; i < finalArgs.length; i++) {
-            if (finalArgs[i] === '-H' && i + 1 < finalArgs.length) {
-              const header = finalArgs[i + 1]
-              const colonIndex = header.indexOf(':')
-              if (colonIndex > 0) {
-                const headerName = header.substring(0, colonIndex)
-                console.log(`  ${headerName}`)
-              }
-              i++
-            }
-          }
-
           actualBinPath = curlExePath
           needsShell = false
         } else {
