@@ -200,13 +200,12 @@ function parseBatArguments(line: string): string[] {
 }
 
 /**
- * Extracts header names from curl arguments
- * Looks for -H flags and extracts the header name from the value
- * @param args Array of curl arguments
- * @returns Set of header names (lowercase)
+ * Extracts user headers from args and returns a map of header name -> [flag, value]
+ * @param args User-provided arguments
+ * @returns Map of lowercase header names to their [flag, value] pairs
  */
-function extractHeaderNamesFromArgs(args: string[]): Set<string> {
-  const headerNames = new Set<string>()
+function extractUserHeaders(args: string[]): Map<string, [string, string]> {
+  const userHeaders = new Map<string, [string, string]>()
   let i = 0
 
   while (i < args.length) {
@@ -216,55 +215,44 @@ function extractHeaderNamesFromArgs(args: string[]): Set<string> {
     if ((arg === '-H' || arg === '--header') && i + 1 < args.length) {
       const headerValue = args[i + 1]
       const headerMatch = headerValue.match(/^["']?([^:]+):/i)
+
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
-        headerNames.add(headerName)
+        userHeaders.set(headerName, [arg, headerValue])
       }
       i += 2
       continue
     }
 
-    // Check for combined format: -HAccept: value or --headerAccept: value
+    // Check for combined format: -HAccept: value
     if (arg.startsWith('-H') && arg.length > 2) {
-      // Combined format: extract everything after -H
-      const afterH = arg.substring(2) // Remove -H prefix
+      const afterH = arg.substring(2)
       const headerMatch = afterH.match(/^["']?([^:]+):/i)
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
-        headerNames.add(headerName)
-      }
-    } else if (arg.startsWith('--header')) {
-      // Handle --header=Accept: value or --headerAccept: value format
-      let afterHeader = arg.substring(8) // Remove --header prefix
-      // Skip = if present (--header=Accept: value format)
-      if (afterHeader.startsWith('=')) {
-        afterHeader = afterHeader.substring(1)
-      }
-      if (afterHeader) {
-        const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
-        if (headerMatch) {
-          const headerName = headerMatch[1].trim().toLowerCase()
-          headerNames.add(headerName)
-        }
+        userHeaders.set(headerName, ['-H', afterH])
       }
     }
 
     i++
   }
 
-  return headerNames
+  return userHeaders
 }
 
 /**
- * Filters out headers from batArgs that match user-provided headers
+ * Merges batArgs and userArgs, replacing .bat headers with user headers at the correct position
  * @param batArgs Arguments extracted from .bat file
- * @param userHeaderNames Set of header names provided by the user (lowercase)
- * @returns Filtered arguments without conflicting headers
+ * @param userArgs User-provided arguments
+ * @returns Merged arguments with user headers replacing .bat headers at their original positions
  */
-function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string>): string[] {
-  const filtered: string[] = []
+function mergeHeaderArguments(batArgs: string[], userArgs: string[]): string[] {
+  const userHeaders = extractUserHeaders(userArgs)
+  const merged: string[] = []
+  const insertedHeaders = new Set<string>()
   let i = 0
 
+  // Process batArgs and insert user headers at the correct positions
   while (i < batArgs.length) {
     const arg = batArgs[i]
 
@@ -276,36 +264,42 @@ function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
 
-        if (userHeaderNames.has(headerName)) {
-          // Skip both flag and value
+        if (userHeaders.has(headerName)) {
+          // Replace with user's version
+          const [userFlag, userValue] = userHeaders.get(headerName)!
+          merged.push(userFlag)
+          merged.push(userValue)
+          insertedHeaders.add(headerName)
           i += 2
           continue
         }
       }
 
       // Keep both flag and value
-      filtered.push(arg)
-      filtered.push(headerValue)
+      merged.push(arg)
+      merged.push(headerValue)
       i += 2
       continue
     }
 
     // Check for combined format: -HAccept: value or --headerAccept: value
     if (arg.startsWith('-H') && arg.length > 2) {
-      // Combined format: extract everything after -H
-      const afterH = arg.substring(2) // Remove -H prefix
+      const afterH = arg.substring(2)
       const headerMatch = afterH.match(/^["']?([^:]+):/i)
       if (headerMatch) {
         const headerName = headerMatch[1].trim().toLowerCase()
-        if (userHeaderNames.has(headerName)) {
+        if (userHeaders.has(headerName)) {
+          // Replace with user's version
+          const [userFlag, userValue] = userHeaders.get(headerName)!
+          merged.push(userFlag)
+          merged.push(userValue)
+          insertedHeaders.add(headerName)
           i++
           continue
         }
       }
     } else if (arg.startsWith('--header')) {
-      // Handle --header=Accept: value or --headerAccept: value format
-      let afterHeader = arg.substring(8) // Remove --header prefix
-      // Skip = if present (--header=Accept: value format)
+      let afterHeader = arg.substring(8)
       if (afterHeader.startsWith('=')) {
         afterHeader = afterHeader.substring(1)
       }
@@ -313,7 +307,12 @@ function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string
         const headerMatch = afterHeader.match(/^["']?([^:]+):/i)
         if (headerMatch) {
           const headerName = headerMatch[1].trim().toLowerCase()
-          if (userHeaderNames.has(headerName)) {
+          if (userHeaders.has(headerName)) {
+            // Replace with user's version
+            const [userFlag, userValue] = userHeaders.get(headerName)!
+            merged.push(userFlag)
+            merged.push(userValue)
+            insertedHeaders.add(headerName)
             i++
             continue
           }
@@ -321,11 +320,49 @@ function filterConflictingHeaders(batArgs: string[], userHeaderNames: Set<string
       }
     }
 
-    filtered.push(arg)
+    merged.push(arg)
     i++
   }
 
-  return filtered
+  // Append remaining user args that weren't headers or weren't inserted yet
+  let j = 0
+  while (j < userArgs.length) {
+    const arg = userArgs[j]
+
+    if ((arg === '-H' || arg === '--header') && j + 1 < userArgs.length) {
+      const headerValue = userArgs[j + 1]
+      const headerMatch = headerValue.match(/^["']?([^:]+):/i)
+
+      if (headerMatch) {
+        const headerName = headerMatch[1].trim().toLowerCase()
+        if (!insertedHeaders.has(headerName)) {
+          merged.push(arg)
+          merged.push(headerValue)
+        }
+      }
+      j += 2
+      continue
+    }
+
+    if (arg.startsWith('-H') && arg.length > 2) {
+      const afterH = arg.substring(2)
+      const headerMatch = afterH.match(/^["']?([^:]+):/i)
+      if (headerMatch) {
+        const headerName = headerMatch[1].trim().toLowerCase()
+        if (!insertedHeaders.has(headerName)) {
+          merged.push(arg)
+        }
+      }
+      j++
+      continue
+    }
+
+    // Not a header, include it
+    merged.push(arg)
+    j++
+  }
+
+  return merged
 }
 
 export function runBinary(
@@ -376,10 +413,8 @@ export function runBinary(
         }
 
         if (curlExePath && fs.existsSync(curlExePath)) {
-          const userHeaderNames = extractHeaderNamesFromArgs(args)
           const batArgs = parseBatFile(cleanPath)
-          const filteredBatArgs = filterConflictingHeaders(batArgs, userHeaderNames)
-          finalArgs = [...filteredBatArgs, ...args]
+          finalArgs = mergeHeaderArguments(batArgs, args)
           actualBinPath = curlExePath
           needsShell = false
         } else {
