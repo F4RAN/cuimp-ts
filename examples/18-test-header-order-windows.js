@@ -7,7 +7,7 @@
  *   node test-header-order.js
  */
 
-import { createCuimpHttp } from './dist/index.js'
+import { createCuimpHttp } from '../dist/index.js'
 
 async function main() {
   console.log('=== Header Order Test ===\n')

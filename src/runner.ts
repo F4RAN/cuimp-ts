@@ -415,16 +415,6 @@ export function runBinary(
         if (curlExePath && fs.existsSync(curlExePath)) {
           const batArgs = parseBatFile(cleanPath)
           finalArgs = mergeHeaderArguments(batArgs, args)
-
-          // Debug: Show all headers in order
-          console.log('[cuimp debug] Final headers in order:')
-          for (let i = 0; i < finalArgs.length; i++) {
-            if (finalArgs[i] === '-H' && i + 1 < finalArgs.length) {
-              console.log(`  ${finalArgs[i + 1]}`)
-              i++ // Skip the value
-            }
-          }
-
           actualBinPath = curlExePath
           needsShell = false
         } else {
