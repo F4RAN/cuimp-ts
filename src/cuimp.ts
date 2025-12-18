@@ -74,6 +74,11 @@ class Cuimp {
         return false
       }
 
+      // .bat files are Windows-specific and not executable on Unix-like systems
+      if (process.platform !== 'win32' && binaryPath.toLowerCase().endsWith('.bat')) {
+        return false
+      }
+
       // On Unix-like systems, check if it's executable
       if (process.platform !== 'win32') {
         const mode = stats.mode
