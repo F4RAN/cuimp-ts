@@ -569,7 +569,7 @@ export const parseDescriptor = async (
     if (!autoDownload) {
       throw new Error(
         `Binary not found for ${browser}${version && version !== 'latest' ? ` (version ${version})` : ''} on ${platform}-${architecture}. ` +
-        `Set autoDownload: true in options to enable automatic download, or use the download() method to explicitly download.`
+          `Set autoDownload: true in options to enable automatic download, or use the download() method to explicitly download.`
       )
     }
 
