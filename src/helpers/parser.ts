@@ -524,7 +524,7 @@ export const parseDescriptor = async (
             // First, check if the requested version binary already exists
             const requestedBinary = findBinaryWithVersion(browser, requestedVersion)
             if (requestedBinary) {
-              logger.info(
+              logger.debug(
                 `Found existing binary ${existingBinary} (version ${browserVersion}), but requested version ${requestedVersion}. Using existing ${requestedVersion} binary.`
               )
               const requestedBrowserVersion = extractVersionNumber(
@@ -537,13 +537,13 @@ export const parseDescriptor = async (
               }
             }
             // Requested version doesn't exist, need to download
-            logger.info(
+            logger.debug(
               `Found existing binary ${existingBinary} (version ${browserVersion}), but requested version ${requestedVersion} not found. Downloading correct version...`
             )
             // Continue to download section below - don't return here
           } else {
             // Version matches, use existing binary
-            logger.info(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
+            logger.debug(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
             return {
               binaryPath: existingBinary,
               isDownloaded: false,
@@ -552,7 +552,7 @@ export const parseDescriptor = async (
           }
         } else {
           // No version specified or 'latest', accept any existing binary
-          logger.info(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
+          logger.debug(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
           return {
             binaryPath: existingBinary,
             isDownloaded: false,

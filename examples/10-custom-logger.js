@@ -106,6 +106,36 @@ async function main() {
   }
   console.log()
 
+  // Example 5: Conditional debug logger (environment-based)
+  console.log('5. Using conditional debug logger (environment-based)...')
+  console.log('   (Set DEBUG=true to see debug messages)')
+  const smartLogger = {
+    info: (...args) => console.log('   [INFO]', ...args),
+    warn: (...args) => console.warn('   [WARN]', ...args),
+    error: (...args) => console.error('   [ERROR]', ...args),
+    debug: process.env.DEBUG === 'true' 
+      ? (...args) => console.debug('   [DEBUG]', ...args)
+      : () => {}  // Only show debug if env var is set
+  }
+
+  const smartClient = createCuimpHttp({
+    descriptor: { browser: 'safari', version: 'latest' },
+    logger: smartLogger
+  })
+
+  try {
+    await smartClient.get('https://httpbin.org/get')
+    if (process.env.DEBUG === 'true') {
+      console.log('   ✅ Request completed with debug logging enabled')
+    } else {
+      console.log('   ✅ Request completed (debug messages suppressed)')
+      console.log('   💡 Tip: Run with DEBUG=true to see debug messages')
+    }
+  } catch (error) {
+    console.log('   ⚠️  Error:', error.message)
+  }
+  console.log()
+
   console.log('✅ Custom logger example completed!')
   console.log()
   console.log('Note: Custom loggers allow you to:')
@@ -113,6 +143,7 @@ async function main() {
   console.log('  - Route logs to external systems')
   console.log('  - Format logs differently')
   console.log('  - Collect logs for analysis')
+  console.log('  - Conditionally enable debug logging via environment variables')
 }
 
 main()

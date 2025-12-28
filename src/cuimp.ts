@@ -46,7 +46,7 @@ class Cuimp {
       // Update the path
       this.path = this.binaryInfo.binaryPath
 
-      this.logger.info(`Binary verified: ${this.path}`)
+      this.logger.debug(`Binary verified: ${this.path}`)
       if (this.binaryInfo.isDownloaded) {
         this.logger.info(`Binary downloaded successfully (version: ${this.binaryInfo.version})`)
       }
@@ -193,7 +193,7 @@ class Cuimp {
       if (this.binaryInfo.isDownloaded) {
         this.logger.info(`Download completed (version: ${this.binaryInfo.version})`)
       } else {
-        this.logger.info(`Using existing binary (version: ${this.binaryInfo.version})`)
+        this.logger.debug(`Using existing binary (version: ${this.binaryInfo.version})`)
       }
 
       return this.binaryInfo
