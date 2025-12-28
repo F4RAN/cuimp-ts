@@ -29,10 +29,11 @@ async function main() {
     const cuimp = new Cuimp({
       descriptor: { browser: 'chrome', version: '123' }
     })
-    const binaryInfo2 = await cuimp.verifyBinary()
+    const binaryPath = await cuimp.verifyBinary()
+    const binaryInfo2 = cuimp.getBinaryInfo()
     console.log('   ✅ Binary verified:')
-    console.log(`      Path: ${binaryInfo2.binaryPath}`)
-    console.log(`      Version: ${binaryInfo2.version || 'N/A'}`)
+    console.log(`      Path: ${binaryPath}`)
+    console.log(`      Version: ${binaryInfo2?.version || 'N/A'}`)
     console.log()
 
     // Method 3: Preview command without executing
