@@ -59,10 +59,34 @@ async function main() {
     }
     console.log()
 
+    // Method 5: Disable auto-download (for advanced users)
+    console.log('5. Using autoDownload: false (prevents automatic downloads)...')
+    try {
+      const cuimpNoAuto = new Cuimp({
+        descriptor: { browser: 'chrome', version: '999' }, // Non-existent version
+        autoDownload: false // Prevent automatic download
+      })
+      await cuimpNoAuto.verifyBinary()
+      console.log('   ✅ Binary found (unexpected)')
+    } catch (error) {
+      console.log('   ✅ Expected error (binary not found, auto-download disabled):')
+      console.log(`      ${error.message}`)
+      console.log()
+      console.log('   💡 Tip: Use autoDownload: false when you want to:')
+      console.log('      - Control when binaries are downloaded')
+      console.log('      - Use custom installation methods')
+      console.log('      - Fail fast if binary is missing')
+      console.log()
+      console.log('   To explicitly download, use the download() method:')
+      console.log('   await cuimp.download()')
+    }
+    console.log()
+
     console.log('✅ Binary management example completed!')
     console.log()
     console.log('Note: Binaries are cached and reused between requests.')
     console.log('      Use forceDownload: true to bypass cache.')
+    console.log('      Use autoDownload: false to prevent automatic downloads.')
   } catch (error) {
     console.error('❌ Error:', error.message)
     if (error.code) {

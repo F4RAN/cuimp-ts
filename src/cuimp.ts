@@ -8,11 +8,13 @@ class Cuimp {
   private path: string
   private binaryInfo?: BinaryInfo
   private logger: Logger
+  private autoDownload: boolean
 
   constructor(options?: CuimpOptions) {
     this.descriptor = options?.descriptor || {}
     this.path = options?.path || ''
     this.logger = options?.logger ?? console
+    this.autoDownload = options?.autoDownload !== false // Default to true
   }
 
   /**
@@ -32,7 +34,7 @@ class Cuimp {
       }
 
       // Parse descriptor to get binary info
-      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
+      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger, this.autoDownload)
 
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after parsing descriptor')
@@ -183,7 +185,8 @@ class Cuimp {
       }
 
       // Parse descriptor to get binary info and download
-      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger)
+      // download() method always downloads, so ignore autoDownload setting
+      this.binaryInfo = await parseDescriptor(this.descriptor, this.logger, true)
 
       if (!this.binaryInfo.binaryPath) {
         throw new Error('Binary path not found after processing')

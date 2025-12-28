@@ -497,7 +497,8 @@ const getSystemInfo = (): { architecture: string; platform: string } => {
  */
 export const parseDescriptor = async (
   descriptor: CuimpDescriptor,
-  logger: Logger = console
+  logger: Logger = console,
+  autoDownload: boolean = true
 ): Promise<BinaryInfo> => {
   try {
     const { architecture, platform } = getSystemInfo()
@@ -562,6 +563,14 @@ export const parseDescriptor = async (
       }
     } else {
       logger.info('forceDownload enabled, skipping cache...')
+    }
+
+    // If autoDownload is disabled and binary not found, throw error
+    if (!autoDownload) {
+      throw new Error(
+        `Binary not found for ${browser}${version && version !== 'latest' ? ` (version ${version})` : ''} on ${platform}-${architecture}. ` +
+        `Set autoDownload: true in options to enable automatic download, or use the download() method to explicitly download.`
+      )
     }
 
     // Download binary if not found, version mismatch, or forceDownload enabled
