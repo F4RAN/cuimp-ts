@@ -492,6 +492,7 @@ await cuimp.download() // Always downloads, ignoring autoDownload setting
 ```
 
 **Use cases for `autoDownload: false`:**
+
 - Control when binaries are downloaded (custom installation methods)
 - Fail fast if binary is missing (production environments)
 - Prevent unexpected downloads
@@ -569,9 +570,7 @@ const smartLogger = {
   info: (...args) => console.log('[INFO]', ...args),
   warn: (...args) => console.warn('[WARN]', ...args),
   error: (...args) => console.error('[ERROR]', ...args),
-  debug: process.env.DEBUG === 'true' 
-    ? (...args) => console.debug('[DEBUG]', ...args)
-    : () => {}  // Suppress debug messages by default
+  debug: process.env.DEBUG === 'true' ? (...args) => console.debug('[DEBUG]', ...args) : () => {}, // Suppress debug messages by default
 }
 
 const client = createCuimpHttp({
