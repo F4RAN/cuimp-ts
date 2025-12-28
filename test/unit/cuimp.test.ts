@@ -341,7 +341,7 @@ describe('Cuimp', () => {
       const result = await cuimp.download()
 
       expect(result).toEqual(mockBinaryInfo)
-      expect(mockParseDescriptor).toHaveBeenCalledWith({}, expect.any(Object))
+      expect(mockParseDescriptor).toHaveBeenCalledWith({}, expect.any(Object), true)
     })
 
     it('should download binary with descriptor', async () => {
