@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { RunResult } from './types/runTypes'
+import { RunResult, RunStreamResult } from './types/runTypes'
 import { CurlExitCode } from './types/curlErrors'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -531,6 +531,253 @@ export function runBinary(
         stdout: Buffer.concat(out),
         stderr: Buffer.concat(err),
       })
+    })
+  })
+}
+
+export function runBinaryStream(
+  binPath: string,
+  args: string[],
+  opts?: {
+    timeout?: number
+    signal?: AbortSignal
+    stdin?: string | Buffer
+    onStdout?: (chunk: Buffer) => void | Promise<void>
+    onStderr?: (chunk: Buffer) => void | Promise<void>
+  }
+): Promise<RunStreamResult> {
+  return new Promise((resolve, reject) => {
+    const isWindows = process.platform === 'win32'
+    const cleanPath = binPath.replace(/^["']+/, '').replace(/["']+$/, '')
+    const isBatFile = cleanPath.toLowerCase().endsWith('.bat')
+
+    let actualBinPath = cleanPath
+    let finalArgs = args
+    let needsShell = false
+
+    if (isWindows && isBatFile) {
+      try {
+        const batDir = path.win32.dirname(cleanPath)
+        const searchedPaths: string[] = []
+        let curlExePath: string | null = null
+
+        let candidatePath = path.win32.join(batDir, 'curl.exe')
+        searchedPaths.push(candidatePath)
+        if (fs.existsSync(candidatePath)) {
+          curlExePath = candidatePath
+        }
+
+        if (!curlExePath) {
+          const parentDir = path.win32.dirname(batDir)
+          candidatePath = path.win32.join(parentDir, 'curl.exe')
+          searchedPaths.push(candidatePath)
+          if (fs.existsSync(candidatePath)) {
+            curlExePath = candidatePath
+          }
+        }
+
+        if (!curlExePath) {
+          try {
+            const files = fs.readdirSync(batDir)
+            const curlExe = files.find(f => f.toLowerCase() === 'curl.exe')
+            if (curlExe) {
+              curlExePath = path.win32.join(batDir, curlExe)
+            }
+          } catch {
+            // Directory read failed
+          }
+        }
+
+        if (curlExePath && fs.existsSync(curlExePath)) {
+          const batArgs = parseBatFile(cleanPath)
+          finalArgs = mergeHeaderArguments(batArgs, args)
+          actualBinPath = curlExePath
+          needsShell = false
+        } else {
+          console.warn(
+            `[cuimp] curl.exe not found. Searched in: ${searchedPaths.join(', ')}. Falling back to .bat file. This may cause duplicate headers.`
+          )
+          needsShell = true
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.warn(`[cuimp] Failed to parse .bat file, using fallback: ${errorMsg}`)
+        needsShell = true
+      }
+    }
+
+    if (isWindows && !finalArgs.includes('--cacert') && !finalArgs.includes('-k')) {
+      const binDir = path.dirname(actualBinPath)
+      const caBundlePath = path.join(binDir, 'curl-ca-bundle.crt')
+      if (fs.existsSync(caBundlePath)) {
+        finalArgs = ['--cacert', caBundlePath, ...finalArgs]
+      }
+    }
+
+    if (needsShell) {
+      let normalizedPath = actualBinPath
+      const isWindowsAbsolutePath = /^[A-Za-z]:[\\/]/.test(normalizedPath)
+      const hasPathSeparator = /[\\/]/.test(normalizedPath)
+
+      if (!isWindowsAbsolutePath && !path.isAbsolute(normalizedPath) && hasPathSeparator) {
+        normalizedPath = path.resolve(normalizedPath)
+      } else if (isWindowsAbsolutePath || path.isAbsolute(normalizedPath)) {
+        if (isWindowsAbsolutePath) {
+          normalizedPath = path.win32.normalize(normalizedPath)
+        } else {
+          normalizedPath = path.normalize(normalizedPath)
+        }
+      }
+
+      actualBinPath = normalizedPath
+    }
+    if (needsShell) {
+      finalArgs = finalArgs.map(arg => {
+        if (/[&|<>^"%!\s]/.test(arg)) {
+          const escaped = arg.replace(/"/g, '""')
+          return `"${escaped}"`
+        }
+        return arg
+      })
+    }
+
+    if (needsShell && /[&|<>^"%!\s]/.test(actualBinPath)) {
+      actualBinPath = actualBinPath.replace(/"/g, '""')
+      actualBinPath = `"${actualBinPath}"`
+    }
+
+    const child = spawn(actualBinPath, finalArgs, {
+      stdio: [opts?.stdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+      shell: needsShell,
+    })
+
+    if (opts?.stdin && child.stdin) {
+      const stdinData = typeof opts.stdin === 'string' ? Buffer.from(opts.stdin) : opts.stdin
+      child.stdin.write(stdinData)
+      child.stdin.end()
+    }
+
+    let killedByTimeout = false
+    let killedByAbort = false
+    let t: NodeJS.Timeout | undefined
+    let settled = false
+    let pendingStdout: Promise<void> | null = null
+
+    const rejectOnce = (error: Error) => {
+      if (settled) return
+      settled = true
+      if (t) clearTimeout(t)
+      try {
+        child.kill('SIGKILL')
+      } catch {
+        // Ignore kill errors
+      }
+      reject(error)
+    }
+
+    if (opts?.timeout && opts.timeout > 0) {
+      t = setTimeout(() => {
+        killedByTimeout = true
+        child.kill('SIGKILL')
+      }, opts.timeout)
+    }
+
+    const err: Buffer[] = []
+
+    if (opts?.signal) {
+      if (opts.signal.aborted) {
+        killedByAbort = true
+        child.kill('SIGKILL')
+      } else {
+        const onAbort = () => {
+          killedByAbort = true
+          child.kill('SIGKILL')
+        }
+        opts.signal.addEventListener('abort', onAbort, { once: true })
+        child.on('exit', () => opts.signal?.removeEventListener('abort', onAbort))
+      }
+    }
+
+    child.stdout?.on('data', (c: Uint8Array) => {
+      const chunk = Buffer.from(c)
+      if (!opts?.onStdout) {
+        return
+      }
+      let result: void | Promise<void>
+      try {
+        result = opts.onStdout(chunk)
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error))
+        return rejectOnce(err)
+      }
+      if (result && typeof (result as Promise<void>).then === 'function') {
+        const p = Promise.resolve(result)
+        pendingStdout = p
+        child.stdout?.pause()
+        p.then(() => {
+          if (pendingStdout === p) {
+            pendingStdout = null
+          }
+          child.stdout?.resume()
+        }).catch(error => {
+          const err = error instanceof Error ? error : new Error(String(error))
+          rejectOnce(err)
+        })
+      }
+    })
+
+    child.stderr?.on('data', (c: Uint8Array) => {
+      const chunk = Buffer.from(c)
+      err.push(chunk)
+      if (opts?.onStderr) {
+        try {
+          const result = opts.onStderr(chunk)
+          if (result && typeof (result as Promise<void>).then === 'function') {
+            Promise.resolve(result).catch(error => {
+              const err = error instanceof Error ? error : new Error(String(error))
+              rejectOnce(err)
+            })
+          }
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error))
+          rejectOnce(err)
+        }
+      }
+    })
+
+    child.on('error', e => {
+      if (settled) return
+      if (t) clearTimeout(t)
+      settled = true
+      reject(e)
+    })
+
+    child.on('close', code => {
+      if (killedByTimeout) {
+        return rejectOnce(new Error(`Request timed out after ${opts?.timeout} ms`))
+      }
+      if (killedByAbort) {
+        return rejectOnce(new Error('Request aborted'))
+      }
+
+      const finalize = () => {
+        if (settled) return
+        if (t) clearTimeout(t)
+        settled = true
+        resolve({
+          exitCode: code as CurlExitCode | null,
+          stderr: Buffer.concat(err),
+        })
+      }
+
+      if (pendingStdout) {
+        pendingStdout.then(finalize).catch(error => {
+          const err = error instanceof Error ? error : new Error(String(error))
+          rejectOnce(err)
+        })
+      } else {
+        finalize()
+      }
     })
   })
 }

@@ -5,3 +5,8 @@ export interface RunResult {
   stdout: Buffer
   stderr: Buffer
 }
+
+export interface RunStreamResult {
+  exitCode: CurlExitCode | null
+  stderr: Buffer
+}

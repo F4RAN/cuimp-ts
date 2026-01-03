@@ -613,6 +613,147 @@ export function getStatusText(status: number, providedText?: string): string {
   return providedText || HTTP_STATUS_MAP[status] || ''
 }
 
+export interface ParsedHttpHeaders {
+  status: number
+  statusText: string
+  headers: Record<string, string>
+}
+
+export interface HttpResponseStreamParser {
+  push(chunk: Buffer): Promise<void>
+  finish(): Promise<void>
+  response: ParsedHttpHeaders | null
+}
+
+/**
+ * Parses a single HTTP header block (status line + headers).
+ */
+export function parseHttpHeaderBlock(headerText: string): ParsedHttpHeaders {
+  const headerLines = headerText.split(/\r?\n/)
+  const statusLine = headerLines.shift() || 'HTTP/1.1 200 OK'
+  const m = statusLine.match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})(?:\s+(.*))?$/)
+  const status = m ? parseInt(m[1], 10) : 200
+  const statusText = getStatusText(status, m?.[2])
+
+  const headers: Record<string, string> = {}
+  for (const line of headerLines) {
+    const idx = line.indexOf(':')
+    if (idx > 0) {
+      const k = line.slice(0, idx).trim()
+      const v = line.slice(idx + 1).trim()
+      headers[k] = v
+    }
+  }
+
+  return { status, statusText, headers }
+}
+
+function findHeaderSeparator(
+  buf: Buffer
+): {
+  index: number
+  length: number
+} | null {
+  const sep1 = buf.indexOf('\r\n\r\n')
+  const sep2 = buf.indexOf('\n\n')
+
+  if (sep1 === -1 && sep2 === -1) return null
+  if (sep1 !== -1 && (sep2 === -1 || sep1 <= sep2)) {
+    return { index: sep1, length: 4 }
+  }
+  return { index: sep2, length: 2 }
+}
+
+/**
+ * Incrementally parses curl stdout (with -i) into headers and body chunks.
+ */
+export function createHttpResponseStreamParser(
+  handlers: {
+    onHeaders?: (info: ParsedHttpHeaders) => void | Promise<void>
+    onBody?: (chunk: Buffer) => void | Promise<void>
+  } = {}
+): HttpResponseStreamParser {
+  const httpMarker = Buffer.from('HTTP/')
+  let buffer = Buffer.alloc(0)
+  let response: ParsedHttpHeaders | null = null
+  let state: 'headers' | 'maybe-headers' | 'body' = 'headers'
+  let headersEmitted = false
+
+  const emitHeaders = async () => {
+    if (!headersEmitted && response) {
+      headersEmitted = true
+      if (handlers.onHeaders) {
+        await handlers.onHeaders(response)
+      }
+    }
+  }
+
+  const push = async (chunk: Buffer) => {
+    if (chunk.length === 0) return
+    buffer = Buffer.concat([buffer, chunk])
+
+    while (true) {
+      if (state === 'body') {
+        if (buffer.length > 0 && handlers.onBody) {
+          await handlers.onBody(buffer)
+        }
+        buffer = Buffer.alloc(0)
+        return
+      }
+
+      if (state === 'maybe-headers') {
+        if (buffer.length < httpMarker.length) {
+          return
+        }
+        if (buffer.subarray(0, httpMarker.length).equals(httpMarker)) {
+          state = 'headers'
+          continue
+        }
+        state = 'body'
+        await emitHeaders()
+        if (buffer.length > 0 && handlers.onBody) {
+          await handlers.onBody(buffer)
+        }
+        buffer = Buffer.alloc(0)
+        return
+      }
+
+      const sep = findHeaderSeparator(buffer)
+      if (!sep) return
+
+      const headerBuf = buffer.slice(0, sep.index)
+      response = parseHttpHeaderBlock(headerBuf.toString('utf8'))
+      buffer = buffer.slice(sep.index + sep.length)
+      state = 'maybe-headers'
+    }
+  }
+
+  const finish = async () => {
+    if (!headersEmitted && response) {
+      await emitHeaders()
+    }
+
+    if (response && buffer.length > 0) {
+      if (state !== 'body') {
+        state = 'body'
+        await emitHeaders()
+      }
+      if (handlers.onBody) {
+        await handlers.onBody(buffer)
+      }
+      buffer = Buffer.alloc(0)
+    }
+  }
+
+  return {
+    push,
+    finish,
+    get response() {
+      return response
+    },
+  }
+}
+
 /**
  * Parses HTTP response from curl stdout buffer
  * Handles HTTP/1.1 and HTTP/2 formats, including redirects
