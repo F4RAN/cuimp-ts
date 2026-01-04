@@ -690,17 +690,20 @@ export function createHttpResponseStreamParser(
     if (chunk.length === 0) return
     buffer = Buffer.concat([buffer, chunk])
 
-    while (true) {
+    let processing = true
+    while (processing) {
       if (state === 'body') {
         if (buffer.length > 0 && handlers.onBody) {
           await handlers.onBody(buffer)
         }
         buffer = Buffer.alloc(0)
+        processing = false
         return
       }
 
       if (state === 'maybe-headers') {
         if (buffer.length < httpMarker.length) {
+          processing = false
           return
         }
         if (buffer.subarray(0, httpMarker.length).equals(httpMarker)) {
@@ -713,11 +716,15 @@ export function createHttpResponseStreamParser(
           await handlers.onBody(buffer)
         }
         buffer = Buffer.alloc(0)
+        processing = false
         return
       }
 
       const sep = findHeaderSeparator(buffer)
-      if (!sep) return
+      if (!sep) {
+        processing = false
+        return
+      }
 
       const headerBuf = buffer.slice(0, sep.index)
       response = parseHttpHeaderBlock(headerBuf.toString('utf8'))

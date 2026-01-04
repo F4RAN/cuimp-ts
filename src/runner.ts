@@ -710,7 +710,7 @@ export function runBinaryStream(
         const err = error instanceof Error ? error : new Error(String(error))
         return rejectOnce(err)
       }
-      if (result && typeof (result as Promise<void>).then === 'function') {
+      if (result && typeof result.then === 'function') {
         const p = Promise.resolve(result)
         pendingStdout = p
         child.stdout?.pause()
@@ -732,7 +732,7 @@ export function runBinaryStream(
       if (opts?.onStderr) {
         try {
           const result = opts.onStderr(chunk)
-          if (result && typeof (result as Promise<void>).then === 'function') {
+          if (result && typeof result.then === 'function') {
             Promise.resolve(result).catch(error => {
               const err = error instanceof Error ? error : new Error(String(error))
               rejectOnce(err)
