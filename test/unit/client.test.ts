@@ -59,7 +59,7 @@ describe('CuimpHttp', () => {
       expect(response.status).toBe(200)
       expect(response.statusText).toBe('OK')
       expect(response.data).toEqual({ message: 'success' })
-      expect(response.headers['Content-Type']).toBe('application/json')
+      expect(response.headers['content-type']).toBe('application/json')
       expect(mockRunBinary).toHaveBeenCalledWith(
         '/usr/bin/curl-impersonate',
         expect.arrayContaining([

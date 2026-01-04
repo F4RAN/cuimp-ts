@@ -639,7 +639,7 @@ export function parseHttpHeaderBlock(headerText: string): ParsedHttpHeaders {
   for (const line of headerLines) {
     const idx = line.indexOf(':')
     if (idx > 0) {
-      const k = line.slice(0, idx).trim()
+      const k = line.slice(0, idx).trim().toLowerCase()
       const v = line.slice(idx + 1).trim()
       headers[k] = v
     }
@@ -665,6 +665,19 @@ function findHeaderSeparator(buf: Buffer): {
 /**
  * Incrementally parses curl stdout (with -i) into headers and body chunks.
  */
+/**
+ * Checks if buffer starts with a valid HTTP status line pattern.
+ * Requires: HTTP/ followed by version, space, and 3-digit status code.
+ * Limits check to first 64 bytes to avoid false positives from body content.
+ */
+function isHttpStatusLine(buffer: Buffer): boolean {
+  if (buffer.length < 13) return false // Minimum: "HTTP/1.1 200" = 13 bytes
+  const checkLimit = Math.min(64, buffer.length)
+  const preview = buffer.subarray(0, checkLimit).toString('utf8')
+  // Match HTTP/version space 3digits (e.g., "HTTP/1.1 200", "HTTP/2 404")
+  return /^HTTP\/\d(?:\.\d)?\s+\d{3}/.test(preview)
+}
+
 export function createHttpResponseStreamParser(
   handlers: {
     onHeaders?: (info: ParsedHttpHeaders) => void | Promise<void>
@@ -688,28 +701,32 @@ export function createHttpResponseStreamParser(
 
   const push = async (chunk: Buffer) => {
     if (chunk.length === 0) return
+
+    // Optimize: In body mode, stream chunks directly without concatenating
+    if (state === 'body') {
+      if (handlers.onBody) {
+        await handlers.onBody(chunk)
+      }
+      return
+    }
+
+    // For headers/maybe-headers states, we need to buffer to detect boundaries
     buffer = Buffer.concat([buffer, chunk])
 
     let processing = true
     while (processing) {
-      if (state === 'body') {
-        if (buffer.length > 0 && handlers.onBody) {
-          await handlers.onBody(buffer)
-        }
-        buffer = Buffer.alloc(0)
-        processing = false
-        return
-      }
-
       if (state === 'maybe-headers') {
-        if (buffer.length < httpMarker.length) {
+        // Need at least 13 bytes to check for HTTP status line (minimum: "HTTP/1.1 200")
+        if (buffer.length < 13) {
           processing = false
           return
         }
-        if (buffer.subarray(0, httpMarker.length).equals(httpMarker)) {
+        // Use stricter detection: require full status line pattern, not just "HTTP/"
+        if (isHttpStatusLine(buffer)) {
           state = 'headers'
           continue
         }
+        // Not a new header block, transition to body mode
         state = 'body'
         await emitHeaders()
         if (buffer.length > 0 && handlers.onBody) {
@@ -837,7 +854,7 @@ export function parseHttpResponse(stdoutBuf: Buffer): {
   for (const line of headerLines) {
     const idx = line.indexOf(':')
     if (idx > 0) {
-      const k = line.slice(0, idx).trim()
+      const k = line.slice(0, idx).trim().toLowerCase()
       const v = line.slice(idx + 1).trim()
       headers[k] = v
     }

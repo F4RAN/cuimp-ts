@@ -46,8 +46,8 @@ function normalizeHeaders(h?: RequestHeaders): Record<string, string> {
 }
 
 function tryParseBody(buf: Buffer, headers: Record<string, string>): ParsedBody {
-  const ct = Object.keys(headers).find(h => h.toLowerCase() === 'content-type')
-  const val = ct ? headers[ct] : ''
+  // Headers are normalized to lowercase, so direct lookup is safe
+  const val = headers['content-type'] || ''
   if (val && val.toLowerCase().includes('application/json')) {
     try {
       return JSON.parse(buf.toString('utf8')) as JSONValue

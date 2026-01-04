@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { parseDescriptor } from '../../src/helpers/parser'
+import { parseDescriptor, createHttpResponseStreamParser } from '../../src/helpers/parser'
 import { CuimpDescriptor } from '../../src/types/cuimpTypes'
 
 // Mock the connector module
@@ -333,5 +333,223 @@ describe('parseDescriptor', () => {
     expect(result.binaryPath).toBeDefined()
     expect(result.isDownloaded).toBe(true)
     expect(result.version).toBe('1.0.0')
+  })
+})
+
+describe('createHttpResponseStreamParser', () => {
+  describe('edge cases', () => {
+    it('should handle body starting with HTTP/ prefix without false positive', async () => {
+      const bodyChunks: Buffer[] = []
+      const headersReceived: any[] = []
+
+      const parser = createHttpResponseStreamParser({
+        onHeaders: info => {
+          headersReceived.push(info)
+        },
+        onBody: chunk => {
+          bodyChunks.push(chunk)
+        },
+      })
+
+      // Simulate response with body that starts with "HTTP/"
+      const response = Buffer.from(
+        'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHTTP/1.1 200 OK was the status line'
+      )
+
+      await parser.push(response)
+      await parser.finish()
+
+      expect(headersReceived).toHaveLength(1)
+      expect(headersReceived[0].status).toBe(200)
+      expect(Buffer.concat(bodyChunks).toString()).toBe('HTTP/1.1 200 OK was the status line')
+    })
+
+    it('should handle header separator split across chunks', async () => {
+      const bodyChunks: Buffer[] = []
+      const headersReceived: any[] = []
+
+      const parser = createHttpResponseStreamParser({
+        onHeaders: info => {
+          headersReceived.push(info)
+        },
+        onBody: chunk => {
+          bodyChunks.push(chunk)
+        },
+      })
+
+      // Split the header separator across chunks
+      const chunk1 = Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r')
+      const chunk2 = Buffer.from('\n{"message":"success"}')
+
+      await parser.push(chunk1)
+      await parser.push(chunk2)
+      await parser.finish()
+
+      expect(headersReceived).toHaveLength(1)
+      expect(headersReceived[0].status).toBe(200)
+      expect(Buffer.concat(bodyChunks).toString()).toBe('{"message":"success"}')
+    })
+
+    it('should handle redirects with multiple header blocks', async () => {
+      const bodyChunks: Buffer[] = []
+      const headersReceived: any[] = []
+
+      const parser = createHttpResponseStreamParser({
+        onHeaders: info => {
+          headersReceived.push(info)
+        },
+        onBody: chunk => {
+          bodyChunks.push(chunk)
+        },
+      })
+
+      // Simulate redirect chain
+      const response = Buffer.from(
+        'HTTP/1.1 302 Found\r\nLocation: /redirect1\r\n\r\n' +
+          'HTTP/1.1 301 Moved\r\nLocation: /redirect2\r\n\r\n' +
+          'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"final":"response"}'
+      )
+
+      await parser.push(response)
+      await parser.finish()
+
+      // Should only emit the final header block
+      expect(headersReceived).toHaveLength(1)
+      expect(headersReceived[0].status).toBe(200)
+      expect(headersReceived[0].headers['content-type']).toBe('application/json')
+      expect(Buffer.concat(bodyChunks).toString()).toBe('{"final":"response"}')
+    })
+
+    it('should handle 100-continue responses', async () => {
+      const bodyChunks: Buffer[] = []
+      const headersReceived: any[] = []
+
+      const parser = createHttpResponseStreamParser({
+        onHeaders: info => {
+          headersReceived.push(info)
+        },
+        onBody: chunk => {
+          bodyChunks.push(chunk)
+        },
+      })
+
+      // Simulate 100-continue followed by final response
+      const response = Buffer.from(
+        'HTTP/1.1 100 Continue\r\n\r\n' +
+          'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"data":"success"}'
+      )
+
+      await parser.push(response)
+      await parser.finish()
+
+      // Should only emit the final header block
+      expect(headersReceived).toHaveLength(1)
+      expect(headersReceived[0].status).toBe(200)
+      expect(Buffer.concat(bodyChunks).toString()).toBe('{"data":"success"}')
+    })
+
+    it('should normalize header keys to lowercase', async () => {
+      const headersReceived: any[] = []
+
+      const parser = createHttpResponseStreamParser({
+        onHeaders: info => {
+          headersReceived.push(info)
+        },
+      })
+
+      // Headers with mixed case
+      const response = Buffer.from(
+        'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Custom-Header: value\r\n\r\n'
+      )
+
+      await parser.push(response)
+      await parser.finish()
+
+      expect(headersReceived).toHaveLength(1)
+      expect(headersReceived[0].headers['content-type']).toBe('application/json')
+      expect(headersReceived[0].headers['x-custom-header']).toBe('value')
+      // Should not have uppercase keys
+      expect(headersReceived[0].headers['Content-Type']).toBeUndefined()
+      expect(headersReceived[0].headers['X-Custom-Header']).toBeUndefined()
+    })
+
+    it('should optimize body mode by streaming chunks directly', async () => {
+      const bodyChunks: Buffer[] = []
+      let concatCount = 0
+
+      // Track Buffer.concat calls (in real scenario, we'd use a proxy, but for test we verify behavior)
+      const parser = createHttpResponseStreamParser({
+        onHeaders: () => {},
+        onBody: chunk => {
+          bodyChunks.push(chunk)
+        },
+      })
+
+      // First chunk establishes headers and transitions to body
+      const headerChunk = Buffer.from('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n')
+      await parser.push(headerChunk)
+
+      // Subsequent chunks should be streamed directly without concatenation
+      const bodyChunk1 = Buffer.from('chunk1')
+      const bodyChunk2 = Buffer.from('chunk2')
+      const bodyChunk3 = Buffer.from('chunk3')
+
+      await parser.push(bodyChunk1)
+      await parser.push(bodyChunk2)
+      await parser.push(bodyChunk3)
+      await parser.finish()
+
+      // Should receive chunks separately (optimization: no concatenation in body mode)
+      expect(bodyChunks.length).toBeGreaterThan(0)
+      const fullBody = Buffer.concat(bodyChunks).toString()
+      expect(fullBody).toContain('chunk1')
+      expect(fullBody).toContain('chunk2')
+      expect(fullBody).toContain('chunk3')
+    })
+
+    it('should handle empty body', async () => {
+      const bodyChunks: Buffer[] = []
+      const headersReceived: any[] = []
+
+      const parser = createHttpResponseStreamParser({
+        onHeaders: info => {
+          headersReceived.push(info)
+        },
+        onBody: chunk => {
+          bodyChunks.push(chunk)
+        },
+      })
+
+      const response = Buffer.from('HTTP/1.1 204 No Content\r\n\r\n')
+
+      await parser.push(response)
+      await parser.finish()
+
+      expect(headersReceived).toHaveLength(1)
+      expect(headersReceived[0].status).toBe(204)
+      expect(bodyChunks.length).toBe(0)
+    })
+
+    it('should handle very long status line', async () => {
+      const headersReceived: any[] = []
+
+      const parser = createHttpResponseStreamParser({
+        onHeaders: info => {
+          headersReceived.push(info)
+        },
+      })
+
+      // Status line longer than 64 bytes (our check limit)
+      const longStatusText = 'A'.repeat(100)
+      const response = Buffer.from(
+        `HTTP/1.1 200 ${longStatusText}\r\nContent-Type: application/json\r\n\r\n`
+      )
+
+      await parser.push(response)
+      await parser.finish()
+
+      expect(headersReceived).toHaveLength(1)
+      expect(headersReceived[0].status).toBe(200)
+    })
   })
 })
