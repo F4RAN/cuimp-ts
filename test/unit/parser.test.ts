@@ -475,7 +475,6 @@ describe('createHttpResponseStreamParser', () => {
 
     it('should optimize body mode by streaming chunks directly', async () => {
       const bodyChunks: Buffer[] = []
-      let concatCount = 0
 
       // Track Buffer.concat calls (in real scenario, we'd use a proxy, but for test we verify behavior)
       const parser = createHttpResponseStreamParser({

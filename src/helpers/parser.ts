@@ -684,7 +684,6 @@ export function createHttpResponseStreamParser(
     onBody?: (chunk: Buffer) => void | Promise<void>
   } = {}
 ): HttpResponseStreamParser {
-  const httpMarker = Buffer.from('HTTP/')
   let buffer = Buffer.alloc(0)
   let response: ParsedHttpHeaders | null = null
   let state: 'headers' | 'maybe-headers' | 'body' = 'headers'
