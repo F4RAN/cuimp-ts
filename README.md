@@ -214,10 +214,7 @@ await client.requestStream({ url: 'https://httpbin.org/stream/3' }, { onData: ch
 If you want the full body, enable buffering:
 
 ```javascript
-const res = await requestStream(
-  { url: 'https://httpbin.org/stream/3' },
-  { collectBody: true }
-)
+const res = await requestStream({ url: 'https://httpbin.org/stream/3' }, { collectBody: true })
 console.log(res.rawBody?.toString('utf8'))
 ```
 
@@ -379,7 +376,11 @@ const res = await requestStream(
 
 ```typescript
 interface CuimpStreamHandlers {
-  onHeaders?: (info: { status: number; statusText: string; headers: Record<string, string> }) => void
+  onHeaders?: (info: {
+    status: number
+    statusText: string
+    headers: Record<string, string>
+  }) => void
   onData?: (chunk: Buffer) => void
   onEnd?: (info: CuimpStreamResponse) => void
   onError?: (error: Error) => void

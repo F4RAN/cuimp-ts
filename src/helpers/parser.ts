@@ -648,9 +648,7 @@ export function parseHttpHeaderBlock(headerText: string): ParsedHttpHeaders {
   return { status, statusText, headers }
 }
 
-function findHeaderSeparator(
-  buf: Buffer
-): {
+function findHeaderSeparator(buf: Buffer): {
   index: number
   length: number
 } | null {
