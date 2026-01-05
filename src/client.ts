@@ -1,9 +1,11 @@
 import { Cuimp } from './cuimp'
-import { runBinary } from './runner'
+import { runBinary, runBinaryStream } from './runner'
 import type {
   CuimpInstance,
   CuimpRequestConfig,
   CuimpResponse,
+  CuimpStreamHandlers,
+  CuimpStreamResponse,
   Method,
   CookieJarOption,
   QueryParams,
@@ -11,10 +13,10 @@ import type {
   ParsedBody,
   JSONValue,
 } from './types/cuimpTypes'
-import type { RunResult } from './types/runTypes'
+import type { RunResult, RunStreamResult } from './types/runTypes'
 import { CurlError, CurlExitCode } from './types/curlErrors'
 import { CookieJar } from './helpers/cookieJar'
-import { parseHttpResponse } from './helpers/parser'
+import { createHttpResponseStreamParser, parseHttpResponse } from './helpers/parser'
 
 function joinURL(base?: string, path?: string): string | undefined {
   if (!path) return base
@@ -44,8 +46,8 @@ function normalizeHeaders(h?: RequestHeaders): Record<string, string> {
 }
 
 function tryParseBody(buf: Buffer, headers: Record<string, string>): ParsedBody {
-  const ct = Object.keys(headers).find(h => h.toLowerCase() === 'content-type')
-  const val = ct ? headers[ct] : ''
+  // Headers are normalized to lowercase, so direct lookup is safe
+  const val = headers['content-type'] || ''
   if (val && val.toLowerCase().includes('application/json')) {
     try {
       return JSON.parse(buf.toString('utf8')) as JSONValue
@@ -138,7 +140,15 @@ export class CuimpHttp implements CuimpInstance {
     }
   }
 
-  async request<T = JSONValue>(config: CuimpRequestConfig): Promise<CuimpResponse<T>> {
+  private async buildRequestParts(config: CuimpRequestConfig): Promise<{
+    bin: string
+    args: string[]
+    command: string
+    url: string
+    method: Method
+    normHeaders: Record<string, string>
+    stdinData?: string | Buffer
+  }> {
     const method: Method = (config.method || 'GET').toUpperCase() as Method
 
     const urlBase = config.baseURL ?? this.defaults.baseURL
@@ -258,6 +268,21 @@ export class CuimpHttp implements CuimpInstance {
     // Preview (for debugging/response.request.command)
     const command = [bin, ...args.map(a => (/\s/.test(a) ? JSON.stringify(a) : a))].join(' ')
 
+    return {
+      bin,
+      args,
+      command,
+      url,
+      method,
+      normHeaders,
+      stdinData,
+    }
+  }
+
+  async request<T = JSONValue>(config: CuimpRequestConfig): Promise<CuimpResponse<T>> {
+    const { bin, args, command, url, method, normHeaders, stdinData } =
+      await this.buildRequestParts(config)
+
     // Execute
     const result: RunResult = await runBinary(bin, args, {
       timeout: config.timeout ?? this.defaults.timeout,
@@ -301,6 +326,117 @@ export class CuimpHttp implements CuimpInstance {
         command,
       },
     }
+  }
+
+  async requestStream(
+    config: CuimpRequestConfig,
+    handlers: CuimpStreamHandlers = {}
+  ): Promise<CuimpStreamResponse> {
+    const { bin, args, command, url, method, normHeaders, stdinData } =
+      await this.buildRequestParts(config)
+
+    const previewLimit = 500
+    const previewChunks: Buffer[] = []
+    let previewSize = 0
+
+    const collectBody = handlers.collectBody ?? false
+    const bodyChunks: Buffer[] = []
+    let responseHeaders: CuimpStreamResponse | null = null
+
+    const parser = createHttpResponseStreamParser({
+      onHeaders: async info => {
+        responseHeaders = {
+          ...info,
+          request: {
+            url,
+            method,
+            headers: normHeaders,
+            command,
+          },
+        }
+        if (handlers.onHeaders) {
+          await handlers.onHeaders(info)
+        }
+      },
+      onBody: async chunk => {
+        if (collectBody) {
+          bodyChunks.push(chunk)
+        }
+        if (handlers.onData) {
+          await handlers.onData(chunk)
+        }
+      },
+    })
+
+    let result: RunStreamResult
+
+    try {
+      result = await runBinaryStream(bin, args, {
+        timeout: config.timeout ?? this.defaults.timeout,
+        signal: config.signal,
+        stdin: stdinData,
+        onStdout: async chunk => {
+          if (previewSize < previewLimit) {
+            const remaining = previewLimit - previewSize
+            const slice = chunk.slice(0, remaining)
+            previewChunks.push(slice)
+            previewSize = Math.min(previewLimit, previewSize + slice.length)
+          }
+          await parser.push(chunk)
+        },
+      })
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      if (handlers.onError) {
+        await handlers.onError(err)
+      }
+      throw err
+    }
+
+    try {
+      await parser.finish()
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      if (handlers.onError) {
+        await handlers.onError(err)
+      }
+      throw err
+    }
+
+    if (!responseHeaders) {
+      const previewText = Buffer.concat(previewChunks).toString('utf8')
+      const err = new Error(`No HTTP response found:\n${previewText}`)
+      if (handlers.onError) {
+        await handlers.onError(err)
+      }
+      throw err
+    }
+
+    const finalResponse: CuimpStreamResponse = responseHeaders
+
+    const exitCode: CurlExitCode | null = result.exitCode
+    if (exitCode !== null && exitCode !== CurlExitCode.OK) {
+      if (exitCode === CurlExitCode.HTTP_RETURNED_ERROR) {
+        // continue
+      } else {
+        const stderr = result.stderr.toString('utf8')
+        const err = new CurlError(exitCode as CurlExitCode, stderr)
+        if (handlers.onError) {
+          await handlers.onError(err)
+        }
+        throw err
+      }
+    }
+
+    if (collectBody) {
+      finalResponse.rawBody = Buffer.concat(bodyChunks)
+    }
+
+    if (handlers.onEnd) {
+      await handlers.onEnd(finalResponse)
+    }
+
+    return finalResponse
   }
 
   // Shorthand methods

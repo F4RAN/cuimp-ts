@@ -179,6 +179,45 @@ const response3 = await request({
 })
 ```
 
+### Streaming Responses
+
+```javascript
+import { requestStream } from 'cuimp'
+
+await requestStream(
+  { url: 'https://httpbin.org/stream/3', extraCurlArgs: ['--no-buffer'] },
+  {
+    onHeaders: ({ status, headers }) => {
+      console.log('status', status)
+      console.log('content-type', headers['Content-Type'])
+    },
+    onData: chunk => {
+      process.stdout.write(chunk)
+    },
+    onEnd: info => {
+      console.log('done', info.status)
+    },
+    onError: err => {
+      console.error('stream error', err)
+    },
+  }
+)
+```
+
+Note: For streaming (SSE or chunked responses), include `--no-buffer` in `extraCurlArgs` so curl flushes output immediately. You can also set it on the client defaults:
+
+```javascript
+const client = createCuimpHttp({ extraCurlArgs: ['--no-buffer'] })
+await client.requestStream({ url: 'https://httpbin.org/stream/3' }, { onData: chunk => {} })
+```
+
+If you want the full body, enable buffering:
+
+```javascript
+const res = await requestStream({ url: 'https://httpbin.org/stream/3' }, { collectBody: true })
+console.log(res.rawBody?.toString('utf8'))
+```
+
 ### Pre-downloading Binaries
 
 ```javascript
@@ -317,6 +356,38 @@ const response = await request({
 })
 ```
 
+#### `requestStream(config, handlers?)`
+
+Stream a response body incrementally with callbacks.
+
+```javascript
+const res = await requestStream(
+  { url: 'https://httpbin.org/stream/3' },
+  {
+    onHeaders: ({ status }) => console.log('status', status),
+    onData: chunk => process.stdout.write(chunk),
+    onEnd: info => console.log('done', info.status),
+    onError: err => console.error(err),
+  }
+)
+```
+
+`handlers` supports:
+
+```typescript
+interface CuimpStreamHandlers {
+  onHeaders?: (info: {
+    status: number
+    statusText: string
+    headers: Record<string, string>
+  }) => void
+  onData?: (chunk: Buffer) => void
+  onEnd?: (info: CuimpStreamResponse) => void
+  onError?: (error: Error) => void
+  collectBody?: boolean
+}
+```
+
 ### Core Classes
 
 #### `Cuimp`
@@ -354,6 +425,8 @@ const client = new CuimpHttp(core, {
   timeout: 10000,
 })
 ```
+
+`CuimpHttp` also supports streaming via `client.requestStream(config, handlers)`.
 
 ## Configuration
 

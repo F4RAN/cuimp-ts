@@ -51,6 +51,30 @@ export interface CuimpResponse<T = JSONValue> {
   }
 }
 
+export interface CuimpStreamHeaders {
+  status: number
+  statusText: string
+  headers: Record<string, string>
+}
+
+export interface CuimpStreamResponse extends CuimpStreamHeaders {
+  rawBody?: Buffer
+  request: {
+    url: string
+    method: Method
+    headers: Record<string, string | number | boolean>
+    command: string
+  }
+}
+
+export interface CuimpStreamHandlers {
+  onHeaders?: (info: CuimpStreamHeaders) => void | Promise<void>
+  onData?: (chunk: Buffer) => void | Promise<void>
+  onEnd?: (info: CuimpStreamResponse) => void | Promise<void>
+  onError?: (error: Error) => void | Promise<void>
+  collectBody?: boolean
+}
+
 export interface Logger {
   info(...args: (string | number | boolean | object | null | undefined)[]): void
   warn(...args: (string | number | boolean | object | null | undefined)[]): void
@@ -86,6 +110,10 @@ export type ParsedBody = JSONValue | string
 
 export interface CuimpInstance {
   request<T = JSONValue>(config: CuimpRequestConfig): Promise<CuimpResponse<T>>
+  requestStream(
+    config: CuimpRequestConfig,
+    handlers?: CuimpStreamHandlers
+  ): Promise<CuimpStreamResponse>
   get<T = JSONValue>(
     url: string,
     config?: Omit<CuimpRequestConfig, 'url' | 'method' | 'data'>

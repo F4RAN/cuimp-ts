@@ -11,23 +11,33 @@ export type {
   Method,
   CuimpRequestConfig,
   CuimpResponse,
+  CuimpStreamHeaders,
+  CuimpStreamHandlers,
+  CuimpStreamResponse,
   CuimpOptions,
   CuimpInstance,
   CookieJarOption,
 } from './types/cuimpTypes'
 
-export type { RunResult } from './types/runTypes'
+export type { RunResult, RunStreamResult } from './types/runTypes'
 
 // Error exports
 export { CurlError, CurlExitCode } from './types/curlErrors'
 
 // Utility exports
-export { runBinary } from './runner'
+export { runBinary, runBinaryStream } from './runner'
 
 // Import for internal use
 import { Cuimp } from './cuimp'
 import { CuimpHttp } from './client'
-import type { CuimpOptions, CuimpRequestConfig, CuimpResponse, JSONValue } from './types/cuimpTypes'
+import type {
+  CuimpOptions,
+  CuimpRequestConfig,
+  CuimpResponse,
+  CuimpStreamHandlers,
+  CuimpStreamResponse,
+  JSONValue,
+} from './types/cuimpTypes'
 
 // Factory function for creating HTTP client instances
 export function createCuimpHttp(options?: CuimpOptions) {
@@ -48,6 +58,14 @@ export async function request<T = JSONValue>(
 ): Promise<CuimpResponse<T>> {
   const client = createCuimpHttp()
   return client.request<T>(config)
+}
+
+export async function requestStream(
+  config: CuimpRequestConfig,
+  handlers?: CuimpStreamHandlers
+): Promise<CuimpStreamResponse> {
+  const client = createCuimpHttp()
+  return client.requestStream(config, handlers)
 }
 
 // Convenience functions for common HTTP methods
