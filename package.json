@@ -78,6 +78,9 @@
     "vitest": "^2.1.8"
   },
   "dependencies": {
-    "tar": "^7.4.3"
+    "tar": "7.4.3"
+  },
+  "overrides": {
+    "minizlib": "^3.1.0"
   }
 }
