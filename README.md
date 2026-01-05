@@ -958,12 +958,21 @@ Thanks to these awesome people who have contributed to this project:
       <sub>Bug Fixes</sub>
     </td>
     <td align="center">
+      <a href="https://github.com/niallo">
+        <img src="https://github.com/niallo.png" width="100px;" alt="niallo"/><br />
+        <sub><b>niallo</b></sub>
+      </a><br />
+      <sub>Streaming Request API</sub>
+    </td>
+    <td align="center">
       <a href="https://github.com/nvitaterna">
         <img src="https://github.com/nvitaterna.png" width="100px;" alt="nvitaterna"/><br />
         <sub><b>nvitaterna</b></sub>
       </a><br />
       <sub>Bug Fixes</sub>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <a href="https://github.com/tony13tv">
         <img src="https://github.com/tony13tv.png" width="100px;" alt="tony13tv"/><br />
@@ -971,8 +980,6 @@ Thanks to these awesome people who have contributed to this project:
       </a><br />
       <sub>macOS Support</sub>
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <a href="https://github.com/reyzzz">
         <img src="https://github.com/reyzzz.png" width="100px;" alt="reyzzz"/><br />
@@ -984,9 +991,9 @@ Thanks to these awesome people who have contributed to this project:
       <a href="https://github.com/kenmadev">
         <img src="https://github.com/kenmadev.png" width="100px;" alt="kenmadev"/><br />
         <sub><b>kenmadev</b></sub>
-    </a><br />
-    <sub>Windows Repro & Testing</sub>
-</td>
+      </a><br />
+      <sub>Windows Repro & Testing</sub>
+    </td>
   </tr>
 </table>
 
