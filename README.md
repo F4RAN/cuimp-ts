@@ -473,6 +473,7 @@ interface CuimpOptions {
   extraCurlArgs?: string[] // Global curl arguments applied to all requests
   logger?: Logger // Custom logger for binary download/verification messages
   cookieJar?: boolean | string // Enable automatic cookie management
+  autoDownload?: boolean // If false, throw error instead of auto-downloading binaries (default: true)
 }
 ```
 
@@ -540,6 +541,35 @@ client.clearCookies()
 client.destroy()
 ```
 
+### Binary Auto-Download Control
+
+By default, cuimp automatically downloads binaries if they're not found. You can disable this behavior:
+
+```typescript
+// Disable auto-download (for advanced users)
+const client = createCuimpHttp({
+  descriptor: { browser: 'chrome' },
+  autoDownload: false, // Will throw error if binary not found
+})
+
+try {
+  await client.get('https://api.example.com/data')
+} catch (error) {
+  // Error: Binary not found for chrome on macos-arm64...
+  // Set autoDownload: true to enable automatic download
+}
+
+// Explicit download still works
+const cuimp = new Cuimp({ descriptor: { browser: 'chrome' }, autoDownload: false })
+await cuimp.download() // Always downloads, ignoring autoDownload setting
+```
+
+**Use cases for `autoDownload: false`:**
+
+- Control when binaries are downloaded (custom installation methods)
+- Fail fast if binary is missing (production environments)
+- Prevent unexpected downloads
+
 ### Custom Logging
 
 You can provide a custom logger to control how cuimp logs binary download and verification messages:
@@ -605,7 +635,28 @@ console.log('Collected logs:', logEntries)
 // Can send to external logging service, save to file, etc.
 ```
 
-By default, cuimp uses `console` for logging.
+**Example: Conditional debug logger (environment-based)**
+
+```javascript
+// Only show debug messages when DEBUG=true is set
+const smartLogger = {
+  info: (...args) => console.log('[INFO]', ...args),
+  warn: (...args) => console.warn('[WARN]', ...args),
+  error: (...args) => console.error('[ERROR]', ...args),
+  debug: process.env.DEBUG === 'true' ? (...args) => console.debug('[DEBUG]', ...args) : () => {}, // Suppress debug messages by default
+}
+
+const client = createCuimpHttp({
+  descriptor: { browser: 'chrome' },
+  logger: smartLogger,
+})
+
+await client.get('https://api.example.com/data')
+// With DEBUG=true: Shows all logs including debug messages
+// Without DEBUG: Only shows info/warn/error, suppresses debug
+```
+
+By default, cuimp uses `console` for logging. Diagnostic messages (like "Found existing binary", "Binary verified") are logged at `debug` level, so they only appear if your logger implements `debug()`.
 
 ## Supported Browsers
 

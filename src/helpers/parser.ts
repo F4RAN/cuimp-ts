@@ -497,7 +497,8 @@ const getSystemInfo = (): { architecture: string; platform: string } => {
  */
 export const parseDescriptor = async (
   descriptor: CuimpDescriptor,
-  logger: Logger = console
+  logger: Logger = console,
+  autoDownload: boolean = true
 ): Promise<BinaryInfo> => {
   try {
     const { architecture, platform } = getSystemInfo()
@@ -524,7 +525,7 @@ export const parseDescriptor = async (
             // First, check if the requested version binary already exists
             const requestedBinary = findBinaryWithVersion(browser, requestedVersion)
             if (requestedBinary) {
-              logger.info(
+              logger.debug?.(
                 `Found existing binary ${existingBinary} (version ${browserVersion}), but requested version ${requestedVersion}. Using existing ${requestedVersion} binary.`
               )
               const requestedBrowserVersion = extractVersionNumber(
@@ -537,13 +538,13 @@ export const parseDescriptor = async (
               }
             }
             // Requested version doesn't exist, need to download
-            logger.info(
+            logger.debug?.(
               `Found existing binary ${existingBinary} (version ${browserVersion}), but requested version ${requestedVersion} not found. Downloading correct version...`
             )
             // Continue to download section below - don't return here
           } else {
             // Version matches, use existing binary
-            logger.info(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
+            logger.debug?.(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
             return {
               binaryPath: existingBinary,
               isDownloaded: false,
@@ -552,7 +553,7 @@ export const parseDescriptor = async (
           }
         } else {
           // No version specified or 'latest', accept any existing binary
-          logger.info(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
+          logger.debug?.(`Found existing binary: ${existingBinary} (version ${browserVersion})`)
           return {
             binaryPath: existingBinary,
             isDownloaded: false,
@@ -562,6 +563,15 @@ export const parseDescriptor = async (
       }
     } else {
       logger.info('forceDownload enabled, skipping cache...')
+    }
+
+    // If autoDownload is disabled and binary not found, throw error
+    // But allow download if forceDownload is explicitly set (user wants to force re-download)
+    if (!autoDownload && !forceDownload) {
+      throw new Error(
+        `Binary not found for ${browser}${version && version !== 'latest' ? ` (version ${version})` : ''} on ${platform}-${architecture}. ` +
+          `Set autoDownload: true in options to enable automatic download, or use the download() method to explicitly download.`
+      )
     }
 
     // Download binary if not found, version mismatch, or forceDownload enabled
