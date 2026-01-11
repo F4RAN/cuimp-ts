@@ -301,9 +301,11 @@ const downloadAndExtractBinary = async (
     // Construct download URL with correct naming convention
     let assetName: string
     if (platform === 'linux') {
-      // Linux uses specific naming: x86_64-linux-gnu, aarch64-linux-gnu, etc.
-      const linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
-      assetName = `curl-impersonate-${latestVersion}.${linuxArch}-linux-gnu.tar.gz`
+      // Linux uses specific naming: x86_64-linux-gnu, aarch64-linux-gnu, arm-linux-gnueabihf, etc.
+      const specification = architecture === 'arm' ? 'gnueabihf' : 'gnu'
+      const linux64Arch = architecture === 'x64' ? 'x86_64' : 'aarch64'
+      const linuxArch = specification === 'gnu' ? linux64Arch : 'arm'
+      assetName = `curl-impersonate-${latestVersion}.${linuxArch}-linux-${specification}.tar.gz`
     } else if (platform === 'macos') {
       // macos uses specific naming: x86_64-macos, arm64-macos, etc.
       const macosArch = architecture === 'x64' ? 'x86_64' : 'arm64'
@@ -465,6 +467,7 @@ const getSystemInfo = (): { architecture: string; platform: string } => {
   const archMap: Record<string, string> = {
     x64: 'x64',
     x86_64: 'x64',
+    arm: 'arm',
     arm64: 'arm64',
     aarch64: 'arm64',
   }
