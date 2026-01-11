@@ -1,6 +1,6 @@
 export const BROWSER_LIST = ['chrome', 'firefox', 'edge', 'safari']
 
-export const ARCHITECTURE_LIST = ['x64', 'arm64']
+export const ARCHITECTURE_LIST = ['x64', 'arm64', 'arm']
 
 export const PLATFORM_LIST = ['linux', 'windows', 'macos']
 

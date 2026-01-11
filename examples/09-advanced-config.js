@@ -88,7 +88,7 @@ async function main() {
         signal: controller.signal
       })
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error.name === 'AbortError' || error.message === 'Request aborted') {
         console.log('   ✅ Request cancelled as expected')
       } else {
         throw error
