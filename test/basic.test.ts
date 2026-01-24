@@ -90,7 +90,7 @@ describe('Basic Tests', () => {
 
     it('should have correct architecture list', async () => {
       const { ARCHITECTURE_LIST } = await import('../src/constants/cuimpConstants')
-      expect(ARCHITECTURE_LIST).toEqual(['x64', 'arm64'])
+      expect(ARCHITECTURE_LIST).toEqual(['x64', 'arm64', 'arm'])
     })
 
     it('should have correct platform list', async () => {
