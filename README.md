@@ -1045,8 +1045,16 @@ Thanks to these awesome people who have contributed to this project:
       </a><br />
       <sub>Windows Repro & Testing</sub>
     </td>
+    <td align="center">
+      <a href="https://github.com/pirasalbe">
+        <img src="https://github.com/pirasalbe.png" width="100px;" alt="pirasalbe"/><br />
+        <sub><b>pirasalbe</b></sub>
+      </a><br />
+      <sub>Raspberry Pi Support</sub>
+    </td>
   </tr>
 </table>
+
 
 ---
 
