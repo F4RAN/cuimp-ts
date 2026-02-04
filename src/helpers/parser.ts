@@ -7,6 +7,52 @@ import path from 'path'
 import os from 'os'
 import { extract } from 'tar'
 import { fileURLToPath } from 'url'
+import { execSync } from 'child_process'
+
+/**
+ * Detects if the system uses musl libc (Alpine Linux, etc.) instead of glibc
+ * This is important for downloading the correct binary
+ */
+function isMuslLibc(): boolean {
+  if (process.platform !== 'linux') {
+    return false
+  }
+
+  try {
+    // Method 1: Check /etc/os-release for Alpine
+    if (fs.existsSync('/etc/os-release')) {
+      const osRelease = fs.readFileSync('/etc/os-release', 'utf8')
+      if (osRelease.toLowerCase().includes('alpine')) {
+        return true
+      }
+    }
+
+    // Method 2: Check if /lib/ld-musl-* exists (musl's dynamic linker)
+    const libDir = fs.existsSync('/lib') ? fs.readdirSync('/lib') : []
+    if (libDir.some(file => file.startsWith('ld-musl'))) {
+      return true
+    }
+
+    // Method 3: Check ldd version output
+    try {
+      const lddOutput = execSync('ldd --version 2>&1', { encoding: 'utf8', timeout: 5000 })
+      if (lddOutput.toLowerCase().includes('musl')) {
+        return true
+      }
+    } catch {
+      // ldd might not be available or might fail, continue with other checks
+    }
+
+    // Method 4: Check if /etc/alpine-release exists
+    if (fs.existsSync('/etc/alpine-release')) {
+      return true
+    }
+
+    return false
+  } catch {
+    return false
+  }
+}
 
 /**
  * Get the package directory path that works in both CommonJS and ES modules
@@ -301,10 +347,25 @@ const downloadAndExtractBinary = async (
     // Construct download URL with correct naming convention
     let assetName: string
     if (platform === 'linux') {
-      // Linux uses specific naming: x86_64-linux-gnu, aarch64-linux-gnu, arm-linux-gnueabihf, etc.
-      const specification = architecture === 'arm' ? 'gnueabihf' : 'gnu'
-      const linux64Arch = architecture === 'x64' ? 'x86_64' : 'aarch64'
-      const linuxArch = specification === 'gnu' ? linux64Arch : 'arm'
+      // Detect if running on musl (Alpine) or glibc
+      const isMusl = isMuslLibc()
+
+      // Linux uses specific naming: x86_64-linux-gnu, aarch64-linux-musl, arm-linux-gnueabihf, etc.
+      let specification: string
+      let linuxArch: string
+
+      if (isMusl) {
+        // musl builds are available for x64 and arm64
+        specification = 'musl'
+        linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
+      } else if (architecture === 'arm') {
+        specification = 'gnueabihf'
+        linuxArch = 'arm'
+      } else {
+        specification = 'gnu'
+        linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
+      }
+
       assetName = `curl-impersonate-${latestVersion}.${linuxArch}-linux-${specification}.tar.gz`
     } else if (platform === 'macos') {
       // macos uses specific naming: x86_64-macos, arm64-macos, etc.
