@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { parseDescriptor, createHttpResponseStreamParser } from '../../src/helpers/parser'
+import {
+  parseDescriptor,
+  createHttpResponseStreamParser,
+  parseHttpResponse,
+} from '../../src/helpers/parser'
 import { CuimpDescriptor } from '../../src/types/cuimpTypes'
 
 // Mock the connector module
@@ -550,5 +554,24 @@ describe('createHttpResponseStreamParser', () => {
       expect(headersReceived).toHaveLength(1)
       expect(headersReceived[0].status).toBe(200)
     })
+  })
+})
+
+describe('parseHttpResponse', () => {
+  it('should not parse JSON body lines as headers after redirects', () => {
+    const stdout = Buffer.from(
+      'HTTP/1.1 302 Found\r\nLocation: /redirect\r\n\r\n' +
+        'HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\n\r\n' +
+        '{"count":123,"data":[{"key":"HTTP/1.1 200 text inside body"}]}'
+    )
+
+    const response = parseHttpResponse(stdout)
+
+    expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toBe('application/json; charset=utf-8')
+    expect(response.headers['{"count"']).toBeUndefined()
+    expect(response.body.toString('utf8')).toBe(
+      '{"count":123,"data":[{"key":"HTTP/1.1 200 text inside body"}]}'
+    )
   })
 })
