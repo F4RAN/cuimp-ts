@@ -18,7 +18,7 @@ export const getLatestRelease = async (): Promise<string> => {
   }
   const releases = (await response.json()) as GitHubRelease[]
   const stable = releases.find(
-    (r) => !r.draft && !r.prerelease && !PRERELEASE_TAG_PATTERN.test(r.tag_name)
+    r => !r.draft && !r.prerelease && !PRERELEASE_TAG_PATTERN.test(r.tag_name)
   )
   if (!stable) {
     throw new Error('No stable release found for curl-impersonate')
