@@ -2,18 +2,28 @@ import { Logger } from '../types/cuimpTypes'
 
 interface GitHubRelease {
   tag_name: string
+  prerelease: boolean
+  draft: boolean
   [key: string]: unknown
 }
 
+const PRERELEASE_TAG_PATTERN = /[-._](alpha|beta|rc|pre|a\d|b\d)/i
+
 export const getLatestRelease = async (): Promise<string> => {
   const response = await fetch(
-    `https://api.github.com/repos/lexiforest/curl-impersonate/releases/latest`
+    `https://api.github.com/repos/lexiforest/curl-impersonate/releases?per_page=20`
   )
   if (!response.ok) {
     throw new Error(`GitHub API error: ${response.status}`)
   }
-  const data = (await response.json()) as GitHubRelease
-  return data.tag_name // e.g. "v1.2.2"
+  const releases = (await response.json()) as GitHubRelease[]
+  const stable = releases.find(
+    (r) => !r.draft && !r.prerelease && !PRERELEASE_TAG_PATTERN.test(r.tag_name)
+  )
+  if (!stable) {
+    throw new Error('No stable release found for curl-impersonate')
+  }
+  return stable.tag_name // e.g. "v1.2.2"
 }
 
 export const getVersion = async (
