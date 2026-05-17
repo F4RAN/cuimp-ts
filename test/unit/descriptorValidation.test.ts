@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { validateDescriptor } from '../../src/validations/descriptorValidation'
-import { CuimpDescriptor } from '../../src/types/cuimpTypes'
+import { CuimpDescriptor, CuimpDescriptorInput } from '../../src/types/cuimpTypes'
 
 describe('validateDescriptor', () => {
   it('should pass validation for valid descriptor', () => {
@@ -30,7 +30,7 @@ describe('validateDescriptor', () => {
 
   describe('browser validation', () => {
     it('should throw error for invalid browser', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         browser: 'invalid-browser',
       }
 
@@ -40,7 +40,7 @@ describe('validateDescriptor', () => {
     })
 
     it('should accept valid browsers', () => {
-      const validBrowsers = ['chrome', 'firefox', 'edge', 'safari']
+      const validBrowsers = ['chrome', 'firefox', 'edge', 'safari'] as const
 
       validBrowsers.forEach(browser => {
         const descriptor: CuimpDescriptor = { browser }
@@ -51,7 +51,7 @@ describe('validateDescriptor', () => {
 
   describe('architecture validation', () => {
     it('should throw error for invalid architecture', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         architecture: 'invalid-arch',
       }
 
@@ -61,7 +61,7 @@ describe('validateDescriptor', () => {
     })
 
     it('should accept valid architectures', () => {
-      const validArchitectures = ['x64', 'arm64']
+      const validArchitectures = ['x64', 'arm64'] as const
 
       validArchitectures.forEach(architecture => {
         const descriptor: CuimpDescriptor = { architecture }
@@ -72,7 +72,7 @@ describe('validateDescriptor', () => {
 
   describe('platform validation', () => {
     it('should throw error for invalid platform', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         platform: 'invalid-platform',
       }
 
@@ -82,7 +82,7 @@ describe('validateDescriptor', () => {
     })
 
     it('should accept valid platforms including mobile', () => {
-      const validPlatforms = ['linux', 'windows', 'macos', 'ios', 'android']
+      const validPlatforms = ['linux', 'windows', 'macos', 'ios', 'android'] as const
 
       validPlatforms.forEach(platform => {
         const descriptor: CuimpDescriptor = { platform }
@@ -124,7 +124,7 @@ describe('validateDescriptor', () => {
 
   describe('multiple validation errors', () => {
     it('should throw error for first invalid field encountered', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         browser: 'invalid-browser',
         architecture: 'invalid-arch',
         platform: 'invalid-platform',

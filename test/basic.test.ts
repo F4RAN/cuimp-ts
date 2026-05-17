@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { validateDescriptor } from '../src/validations/descriptorValidation'
-import { CuimpDescriptor } from '../src/types/cuimpTypes'
+import { CuimpDescriptor, CuimpDescriptorInput } from '../src/types/cuimpTypes'
 
 describe('Basic Tests', () => {
   describe('validateDescriptor', () => {
@@ -22,7 +22,7 @@ describe('Basic Tests', () => {
     })
 
     it('should throw error for invalid browser', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         browser: 'invalid-browser',
       }
 
@@ -32,7 +32,7 @@ describe('Basic Tests', () => {
     })
 
     it('should throw error for invalid architecture', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         architecture: 'invalid-arch',
       }
 
@@ -42,7 +42,7 @@ describe('Basic Tests', () => {
     })
 
     it('should throw error for invalid platform', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         platform: 'invalid-platform',
       }
 

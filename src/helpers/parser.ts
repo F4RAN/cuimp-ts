@@ -1,6 +1,6 @@
 import { BROWSER_LIST, ARCHITECTURE_LIST, PLATFORM_LIST } from '../constants/cuimpConstants'
 import { HTTP_STATUS_MAP } from '../constants/httpConstants'
-import { CuimpDescriptor, BinaryInfo, Logger } from '../types/cuimpTypes'
+import { CuimpDescriptorInput, BinaryInfo, Logger } from '../types/cuimpTypes'
 import { resolveBinaryTarget } from './descriptorNormalize'
 import { getLatestRelease } from './connector'
 
@@ -576,7 +576,7 @@ export const getSystemInfo = (): { architecture: string; platform: string } => {
  * Main function to parse descriptor and get binary information
  */
 export const parseDescriptor = async (
-  descriptor: CuimpDescriptor,
+  descriptor: CuimpDescriptorInput,
   logger: Logger = console,
   autoDownload: boolean = true
 ): Promise<BinaryInfo> => {

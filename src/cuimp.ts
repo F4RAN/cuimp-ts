@@ -1,10 +1,10 @@
-import { CuimpDescriptor, BinaryInfo, CuimpOptions, Logger } from './types/cuimpTypes'
+import { CuimpDescriptor, CuimpDescriptorInput, BinaryInfo, CuimpOptions, Logger } from './types/cuimpTypes'
 import { validateDescriptor } from './validations/descriptorValidation'
 import { parseDescriptor } from './helpers/parser'
 import fs from 'fs'
 
 class Cuimp {
-  private descriptor: CuimpDescriptor
+  private descriptor: CuimpDescriptorInput
   private path: string
   private binaryInfo?: BinaryInfo
   private logger: Logger
@@ -140,7 +140,7 @@ class Cuimp {
   /**
    * Gets the current descriptor
    */
-  getDescriptor(): CuimpDescriptor {
+  getDescriptor(): CuimpDescriptorInput {
     return { ...this.descriptor }
   }
 
@@ -154,7 +154,7 @@ class Cuimp {
   /**
    * Updates the descriptor
    */
-  setDescriptor(descriptor: CuimpDescriptor): void {
+  setDescriptor(descriptor: CuimpDescriptorInput): void {
     this.descriptor = { ...descriptor }
     // Reset path and binary info when descriptor changes
     this.path = ''

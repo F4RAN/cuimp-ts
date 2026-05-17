@@ -36,7 +36,7 @@ describe('normalizeDescriptor', () => {
 
 describe('resolveBinaryTarget', () => {
   it('falls back ios to macos on macos host', () => {
-    const logger = { debug: vi.fn() }
+    const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
     const result = resolveBinaryTarget(
       { platform: 'ios', architecture: 'arm64' },
       { platform: 'macos', architecture: 'arm64' },

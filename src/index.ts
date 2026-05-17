@@ -7,6 +7,7 @@ import cuimp from './cuimp'
 // Type exports
 export type {
   CuimpDescriptor,
+  CuimpDescriptorInput,
   BinaryInfo,
   Method,
   CuimpRequestConfig,

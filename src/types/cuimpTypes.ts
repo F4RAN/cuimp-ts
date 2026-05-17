@@ -1,3 +1,13 @@
+/** User-provided descriptor (accepts aliases like `iOS`, `x86_64`). */
+export interface CuimpDescriptorInput {
+  browser?: string
+  version?: string
+  architecture?: string
+  platform?: string
+  forceDownload?: boolean
+}
+
+/** Normalized descriptor with validated union fields. */
 export interface CuimpDescriptor {
   browser?: 'chrome' | 'firefox' | 'edge' | 'safari'
   /** Browser build version, e.g. "136", "2601", "133a", or "latest" */
@@ -84,7 +94,7 @@ export interface Logger {
 }
 
 export interface CuimpOptions {
-  descriptor?: CuimpDescriptor
+  descriptor?: CuimpDescriptorInput
   path?: string
   extraCurlArgs?: string[] // Global curl arguments applied to all requests
   logger?: Logger
