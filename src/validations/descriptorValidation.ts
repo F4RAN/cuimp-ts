@@ -1,9 +1,6 @@
 import { CuimpDescriptor } from '../types/cuimpTypes'
 import { ARCHITECTURE_LIST, BROWSER_LIST, PLATFORM_LIST } from '../constants/cuimpConstants'
-import {
-  BROWSER_VERSION_PATTERN,
-  normalizeDescriptor,
-} from '../helpers/descriptorNormalize'
+import { BROWSER_VERSION_PATTERN, normalizeDescriptor } from '../helpers/descriptorNormalize'
 
 export const validateDescriptor = (descriptor: CuimpDescriptor) => {
   const normalized = normalizeDescriptor(descriptor)
@@ -31,10 +28,7 @@ export const validateDescriptor = (descriptor: CuimpDescriptor) => {
 
   // Only validate version if provided
   if (normalized.version) {
-    if (
-      normalized.version !== 'latest' &&
-      !BROWSER_VERSION_PATTERN.test(normalized.version)
-    ) {
+    if (normalized.version !== 'latest' && !BROWSER_VERSION_PATTERN.test(normalized.version)) {
       throw new Error(
         'Version must be "latest" or a 3–4 digit browser version (optional trailing letter, e.g. "136" or "2601" or "133a")'
       )
