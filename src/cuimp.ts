@@ -1,4 +1,4 @@
-import { CuimpDescriptor, CuimpDescriptorInput, BinaryInfo, CuimpOptions, Logger } from './types/cuimpTypes'
+import { CuimpDescriptorInput, BinaryInfo, CuimpOptions, Logger } from './types/cuimpTypes'
 import { validateDescriptor } from './validations/descriptorValidation'
 import { parseDescriptor } from './helpers/parser'
 import fs from 'fs'

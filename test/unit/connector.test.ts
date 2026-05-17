@@ -15,12 +15,13 @@ describe('getLatestRelease', () => {
   it('skips GitHub prerelease flag and alpha-tagged releases (#43)', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [
-        { tag_name: 'v2.0.0a1', prerelease: true, draft: false },
-        { tag_name: 'v2.0.0a1', prerelease: false, draft: false },
-        { tag_name: 'v0.6.1', prerelease: false, draft: false },
-        { tag_name: 'v0.6.0', prerelease: false, draft: true },
-      ],
+      json: () =>
+        Promise.resolve([
+          { tag_name: 'v2.0.0a1', prerelease: true, draft: false },
+          { tag_name: 'v2.0.0a1', prerelease: false, draft: false },
+          { tag_name: 'v0.6.1', prerelease: false, draft: false },
+          { tag_name: 'v0.6.0', prerelease: false, draft: true },
+        ]),
     })
 
     await expect(getLatestRelease()).resolves.toBe('v0.6.1')
@@ -29,10 +30,11 @@ describe('getLatestRelease', () => {
   it('throws when no stable release exists', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [
-        { tag_name: 'v2.0.0a1', prerelease: true, draft: false },
-        { tag_name: 'v3.0.0-beta.1', prerelease: false, draft: false },
-      ],
+      json: () =>
+        Promise.resolve([
+          { tag_name: 'v2.0.0a1', prerelease: true, draft: false },
+          { tag_name: 'v3.0.0-beta.1', prerelease: false, draft: false },
+        ]),
     })
 
     await expect(getLatestRelease()).rejects.toThrow('No stable release found')
