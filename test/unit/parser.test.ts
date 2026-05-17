@@ -247,7 +247,7 @@ describe('parseDescriptor', () => {
     await expect(parseDescriptor(descriptor)).rejects.toThrow()
   })
 
-  it('should throw error for unsupported platform', async () => {
+  it('should throw error for unsupported platform in descriptor', async () => {
     mockFs.existsSync.mockReturnValue(false)
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
@@ -256,7 +256,7 @@ describe('parseDescriptor', () => {
       platform: 'unsupported',
     }
 
-    await expect(parseDescriptor(descriptor)).rejects.toThrow()
+    await expect(parseDescriptor(descriptor)).rejects.toThrow(/Unsupported platform/)
   })
 
   it('should throw error for unsupported architecture', async () => {

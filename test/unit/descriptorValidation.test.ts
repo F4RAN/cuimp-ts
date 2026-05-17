@@ -77,12 +77,12 @@ describe('validateDescriptor', () => {
       }
 
       expect(() => validateDescriptor(invalidDescriptor)).toThrow(
-        "Platform 'invalid-platform' is not supported. Supported platforms: linux, windows, macos"
+        "Platform 'invalid-platform' is not supported. Supported platforms: linux, windows, macos, ios, android"
       )
     })
 
-    it('should accept valid platforms', () => {
-      const validPlatforms = ['linux', 'windows', 'macos']
+    it('should accept valid platforms including mobile', () => {
+      const validPlatforms = ['linux', 'windows', 'macos', 'ios', 'android']
 
       validPlatforms.forEach(platform => {
         const descriptor: CuimpDescriptor = { platform }
@@ -93,14 +93,23 @@ describe('validateDescriptor', () => {
 
   describe('version validation', () => {
     it('should throw error for invalid version format', () => {
-      const invalidVersions = ['12', '1234', '12.3', '12-3']
+      const invalidVersions = ['12', '12345', '12.3', '12-3']
 
       invalidVersions.forEach(version => {
         const descriptor: CuimpDescriptor = { version }
-        expect(() => validateDescriptor(descriptor)).toThrow(
-          'Version must be in the format of XYZ or "latest"'
-        )
+        expect(() => validateDescriptor(descriptor)).toThrow(/Version must be/)
       })
+    })
+
+    it('should accept iOS-style and suffix versions', () => {
+      const validVersions = ['2601', '133a', '1234']
+      validVersions.forEach(version => {
+        expect(() => validateDescriptor({ version })).not.toThrow()
+      })
+    })
+
+    it('should accept normalized iOS platform casing', () => {
+      expect(() => validateDescriptor({ platform: 'iOS' })).not.toThrow()
     })
 
     it('should accept valid version format', () => {

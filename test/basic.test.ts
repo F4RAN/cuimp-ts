@@ -47,7 +47,7 @@ describe('Basic Tests', () => {
       }
 
       expect(() => validateDescriptor(invalidDescriptor)).toThrow(
-        "Platform 'invalid-platform' is not supported. Supported platforms: linux, windows, macos"
+        "Platform 'invalid-platform' is not supported. Supported platforms: linux, windows, macos, ios, android"
       )
     })
 
@@ -56,9 +56,13 @@ describe('Basic Tests', () => {
         version: '12',
       }
 
-      expect(() => validateDescriptor(invalidDescriptor)).toThrow(
-        'Version must be in the format of XYZ'
-      )
+      expect(() => validateDescriptor(invalidDescriptor)).toThrow(/Version must be/)
+    })
+
+    it('should accept Safari 2601 and iOS platform', () => {
+      expect(() =>
+        validateDescriptor({ browser: 'safari', version: '2601', platform: 'iOS' })
+      ).not.toThrow()
     })
 
     it('should accept valid version format', () => {
@@ -95,7 +99,7 @@ describe('Basic Tests', () => {
 
     it('should have correct platform list', async () => {
       const { PLATFORM_LIST } = await import('../src/constants/cuimpConstants')
-      expect(PLATFORM_LIST).toEqual(['linux', 'windows', 'macos'])
+      expect(PLATFORM_LIST).toEqual(['linux', 'windows', 'macos', 'ios', 'android'])
     })
   })
 })

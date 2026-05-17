@@ -1,8 +1,9 @@
 export interface CuimpDescriptor {
-  browser?: string
+  browser?: 'chrome' | 'firefox' | 'edge' | 'safari'
+  /** Browser build version, e.g. "136", "2601", "133a", or "latest" */
   version?: string
-  architecture?: string
-  platform?: string
+  architecture?: 'x64' | 'arm64' | 'arm'
+  platform?: 'linux' | 'windows' | 'macos' | 'ios' | 'android'
   forceDownload?: boolean // Force re-download even if binary exists
 }
 

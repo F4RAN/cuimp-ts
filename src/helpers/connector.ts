@@ -7,7 +7,9 @@ interface GitHubRelease {
   [key: string]: unknown
 }
 
-const PRERELEASE_TAG_PATTERN = /[-._](alpha|beta|rc|pre|a\d|b\d)/i
+/** Matches semver pre-release segments and tags like v2.0.0a1 (issue #43). */
+const PRERELEASE_TAG_PATTERN =
+  /(?:[-._](?:alpha|beta|rc|pre|a\d|b\d)|\d+a\d+$)/i
 
 export const getLatestRelease = async (): Promise<string> => {
   const response = await fetch(
