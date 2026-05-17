@@ -23,7 +23,7 @@ describe('API Tests', () => {
 
     it('should create instance with custom options', () => {
       const options = {
-        descriptor: { browser: 'chrome', version: '123' },
+        descriptor: { browser: 'chrome' as const, version: '123' },
         path: '/custom/path',
       }
       const cuimp = new Cuimp(options)

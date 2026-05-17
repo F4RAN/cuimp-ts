@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { validateDescriptor } from '../src/validations/descriptorValidation'
-import { CuimpDescriptor } from '../src/types/cuimpTypes'
+import { CuimpDescriptor, CuimpDescriptorInput } from '../src/types/cuimpTypes'
 
 describe('Basic Tests', () => {
   describe('validateDescriptor', () => {
@@ -22,7 +22,7 @@ describe('Basic Tests', () => {
     })
 
     it('should throw error for invalid browser', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         browser: 'invalid-browser',
       }
 
@@ -32,7 +32,7 @@ describe('Basic Tests', () => {
     })
 
     it('should throw error for invalid architecture', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         architecture: 'invalid-arch',
       }
 
@@ -42,12 +42,12 @@ describe('Basic Tests', () => {
     })
 
     it('should throw error for invalid platform', () => {
-      const invalidDescriptor: CuimpDescriptor = {
+      const invalidDescriptor: CuimpDescriptorInput = {
         platform: 'invalid-platform',
       }
 
       expect(() => validateDescriptor(invalidDescriptor)).toThrow(
-        "Platform 'invalid-platform' is not supported. Supported platforms: linux, windows, macos"
+        "Platform 'invalid-platform' is not supported. Supported platforms: linux, windows, macos, ios, android"
       )
     })
 
@@ -56,9 +56,13 @@ describe('Basic Tests', () => {
         version: '12',
       }
 
-      expect(() => validateDescriptor(invalidDescriptor)).toThrow(
-        'Version must be in the format of XYZ'
-      )
+      expect(() => validateDescriptor(invalidDescriptor)).toThrow(/Version must be/)
+    })
+
+    it('should accept Safari 2601 and iOS platform', () => {
+      expect(() =>
+        validateDescriptor({ browser: 'safari', version: '2601', platform: 'iOS' })
+      ).not.toThrow()
     })
 
     it('should accept valid version format', () => {
@@ -95,7 +99,7 @@ describe('Basic Tests', () => {
 
     it('should have correct platform list', async () => {
       const { PLATFORM_LIST } = await import('../src/constants/cuimpConstants')
-      expect(PLATFORM_LIST).toEqual(['linux', 'windows', 'macos'])
+      expect(PLATFORM_LIST).toEqual(['linux', 'windows', 'macos', 'ios', 'android'])
     })
   })
 })

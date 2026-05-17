@@ -1,7 +1,10 @@
 import { BROWSER_LIST, ARCHITECTURE_LIST, PLATFORM_LIST } from '../constants/cuimpConstants'
 import { HTTP_STATUS_MAP } from '../constants/httpConstants'
-import { CuimpDescriptor, BinaryInfo, Logger } from '../types/cuimpTypes'
+import { CuimpDescriptorInput, BinaryInfo, Logger } from '../types/cuimpTypes'
+import { resolveBinaryTarget } from './descriptorNormalize'
 import { getLatestRelease } from './connector'
+
+export { resolveBinaryTarget } from './descriptorNormalize'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -329,6 +332,53 @@ const findExistingBinary = (browser: string = ''): string | null => {
 }
 
 /**
+ * Builds the curl-impersonate release asset filename for a platform/architecture pair.
+ */
+export const buildDownloadAssetName = (
+  latestVersion: string,
+  architecture: string,
+  platform: string
+): string => {
+  if (platform === 'linux') {
+    const isMusl = isMuslLibc()
+    let specification: string
+    let linuxArch: string
+
+    if (isMusl) {
+      specification = 'musl'
+      linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
+    } else if (architecture === 'arm') {
+      specification = 'gnueabihf'
+      linuxArch = 'arm'
+    } else {
+      specification = 'gnu'
+      linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
+    }
+
+    return `curl-impersonate-${latestVersion}.${linuxArch}-linux-${specification}.tar.gz`
+  }
+  if (platform === 'macos') {
+    const macosArch = architecture === 'x64' ? 'x86_64' : 'arm64'
+    return `curl-impersonate-${latestVersion}.${macosArch}-macos.tar.gz`
+  }
+  if (platform === 'windows') {
+    const windowsArch = architecture === 'x64' ? 'x86_64' : 'arm64'
+    return `libcurl-impersonate-${latestVersion}.${windowsArch}-win32.tar.gz`
+  }
+  if (platform === 'ios') {
+    if (architecture === 'x64') {
+      return `curl-impersonate-${latestVersion}.x86_64-apple-ios-simulator.tar.gz`
+    }
+    return `curl-impersonate-${latestVersion}.arm64-apple-ios.tar.gz`
+  }
+  if (platform === 'android') {
+    const androidArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
+    return `curl-impersonate-${latestVersion}.${androidArch}-linux-android.tar.gz`
+  }
+  return `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
+}
+
+/**
  * Downloads and extracts curl-impersonate binary
  */
 const downloadAndExtractBinary = async (
@@ -344,41 +394,7 @@ const downloadAndExtractBinary = async (
     const actualVersion: string =
       version === 'latest' ? latestVersion.replace(/^v/, '') : version.replace(/^v/, '')
 
-    // Construct download URL with correct naming convention
-    let assetName: string
-    if (platform === 'linux') {
-      // Detect if running on musl (Alpine) or glibc
-      const isMusl = isMuslLibc()
-
-      // Linux uses specific naming: x86_64-linux-gnu, aarch64-linux-musl, arm-linux-gnueabihf, etc.
-      let specification: string
-      let linuxArch: string
-
-      if (isMusl) {
-        // musl builds are available for x64 and arm64
-        specification = 'musl'
-        linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
-      } else if (architecture === 'arm') {
-        specification = 'gnueabihf'
-        linuxArch = 'arm'
-      } else {
-        specification = 'gnu'
-        linuxArch = architecture === 'x64' ? 'x86_64' : 'aarch64'
-      }
-
-      assetName = `curl-impersonate-${latestVersion}.${linuxArch}-linux-${specification}.tar.gz`
-    } else if (platform === 'macos') {
-      // macos uses specific naming: x86_64-macos, arm64-macos, etc.
-      const macosArch = architecture === 'x64' ? 'x86_64' : 'arm64'
-      assetName = `curl-impersonate-${latestVersion}.${macosArch}-macos.tar.gz`
-    } else if (platform === 'windows') {
-      // Windows uses libcurl-impersonate prefix and win32 suffix: x86_64-win32, arm64-win32, etc.
-      const windowsArch = architecture === 'x64' ? 'x86_64' : 'arm64'
-      assetName = `libcurl-impersonate-${latestVersion}.${windowsArch}-win32.tar.gz`
-    } else {
-      // Other platforms use the original naming
-      assetName = `curl-impersonate-${latestVersion}.${architecture}-${platform}.tar.gz`
-    }
+    const assetName = buildDownloadAssetName(latestVersion, architecture, platform)
     const downloadUrl = `https://github.com/lexiforest/curl-impersonate/releases/download/${latestVersion}/${assetName}`
 
     // Download the binary
@@ -520,7 +536,7 @@ const downloadAndExtractBinary = async (
 /**
  * Determines the appropriate architecture and platform for the current system
  */
-const getSystemInfo = (): { architecture: string; platform: string } => {
+export const getSystemInfo = (): { architecture: string; platform: string } => {
   const arch = process.arch
   const platform = process.platform
 
@@ -560,12 +576,17 @@ const getSystemInfo = (): { architecture: string; platform: string } => {
  * Main function to parse descriptor and get binary information
  */
 export const parseDescriptor = async (
-  descriptor: CuimpDescriptor,
+  descriptor: CuimpDescriptorInput,
   logger: Logger = console,
   autoDownload: boolean = true
 ): Promise<BinaryInfo> => {
   try {
-    const { architecture, platform } = getSystemInfo()
+    const host = getSystemInfo()
+    const { architecture, downloadPlatform: platform } = resolveBinaryTarget(
+      descriptor,
+      host,
+      logger
+    )
     const browser = descriptor.browser || 'chrome'
     const version = descriptor.version || 'latest'
     const forceDownload = descriptor.forceDownload || false

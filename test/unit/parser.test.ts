@@ -4,7 +4,7 @@ import {
   createHttpResponseStreamParser,
   parseHttpResponse,
 } from '../../src/helpers/parser'
-import { CuimpDescriptor } from '../../src/types/cuimpTypes'
+import { CuimpDescriptor, CuimpDescriptorInput } from '../../src/types/cuimpTypes'
 
 // Mock the connector module
 vi.mock('../../src/helpers/connector', () => ({
@@ -242,28 +242,28 @@ describe('parseDescriptor', () => {
     mockFs.existsSync.mockReturnValue(false)
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
-    const descriptor: CuimpDescriptor = { browser: 'unsupported' }
+    const descriptor: CuimpDescriptorInput = { browser: 'unsupported' }
 
     await expect(parseDescriptor(descriptor)).rejects.toThrow()
   })
 
-  it('should throw error for unsupported platform', async () => {
+  it('should throw error for unsupported platform in descriptor', async () => {
     mockFs.existsSync.mockReturnValue(false)
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
-    const descriptor: CuimpDescriptor = {
+    const descriptor: CuimpDescriptorInput = {
       browser: 'chrome',
       platform: 'unsupported',
     }
 
-    await expect(parseDescriptor(descriptor)).rejects.toThrow()
+    await expect(parseDescriptor(descriptor)).rejects.toThrow(/Unsupported platform/)
   })
 
   it('should throw error for unsupported architecture', async () => {
     mockFs.existsSync.mockReturnValue(false)
     mockGetLatestRelease.mockResolvedValue('v1.0.0')
 
-    const descriptor: CuimpDescriptor = {
+    const descriptor: CuimpDescriptorInput = {
       browser: 'chrome',
       architecture: 'unsupported',
     }

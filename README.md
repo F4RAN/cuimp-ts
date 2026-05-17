@@ -437,12 +437,16 @@ Configure which browser to impersonate:
 ```typescript
 interface CuimpDescriptor {
   browser?: 'chrome' | 'firefox' | 'edge' | 'safari'
-  version?: string // e.g., '123', '124', or 'latest' (default)
-  architecture?: 'x64' | 'arm64'
-  platform?: 'linux' | 'windows' | 'macos'
+  version?: string // e.g., '136', '2601', '133a', or 'latest' (default)
+  architecture?: 'x64' | 'arm64' | 'arm'
+  platform?: 'linux' | 'windows' | 'macos' | 'ios' | 'android'
   forceDownload?: boolean // Force re-download even if binary exists
 }
 ```
+
+Platform values are lowercase (`ios`, `macos`); aliases like `iOS` or `macOS` are normalized automatically.
+
+When you set `platform: 'ios'` or `platform: 'android'` on a desktop host, cuimp downloads the **host OS** binary (e.g. macOS on a Mac) and selects the browser fingerprint via `browser` + `version` (e.g. `curl_safari2601`). Native iOS/Android binaries are used when running on that OS, or set `path` to a preinstalled binary.
 
 ### CuimpRequestConfig
 
@@ -1079,6 +1083,22 @@ Thanks to these awesome people who have contributed to this project:
         <sub><b>vinikjkkj</b></sub>
       </a><br />
       <sub>musl libc Detection (Linux)</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/KylieJennerKodes">
+        <img src="https://github.com/KylieJennerKodes.png" width="100px;" alt="KylieJennerKodes"/><br />
+        <sub><b>KylieJennerKodes</b></sub>
+      </a><br />
+      <sub>iOS Platform & Safari 2601 (#40)</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/darrencapner">
+        <img src="https://github.com/darrencapner.png" width="100px;" alt="darrencapner"/><br />
+        <sub><b>darrencapner</b></sub>
+      </a><br />
+      <sub>Stable Release Selection (#43)</sub>
     </td>
   </tr>
 </table>
