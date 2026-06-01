@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { runBinary } from '../../src/runner'
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 
 // Mock child_process
@@ -56,6 +57,7 @@ function restorePlatform(originalPlatform: string): boolean {
 
 describe('runBinary', () => {
   const mockSpawn = vi.mocked(spawn)
+  const originalPlatform = process.platform
   let mockChildProcess: any
 
   beforeEach(() => {
@@ -77,7 +79,39 @@ describe('runBinary', () => {
   })
 
   afterEach(() => {
+    restorePlatform(originalPlatform)
     vi.restoreAllMocks()
+  })
+
+  it('should run Unix wrapper scripts through curl-impersonate directly', async () => {
+    if (!mockPlatform('android')) {
+      return
+    }
+
+    vi.spyOn(fs, 'readFileSync').mockReturnValue(`#!/usr/bin/env bash
+
+# Find the directory of this script
+dir=\${0%/*}
+
+"$dir/curl-impersonate" --compressed --impersonate "chrome146" "$@"
+`)
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true)
+
+    mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'close') {
+        setTimeout(() => callback(0), 10)
+      }
+    })
+    mockChildProcess.stdout.on.mockImplementation(() => {})
+    mockChildProcess.stderr.on.mockImplementation(() => {})
+
+    await runBinary('/home/.cuimp/binaries/curl_chrome146', ['https://example.com'])
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      path.join('/home/.cuimp/binaries', 'curl-impersonate'),
+      ['--compressed', '--impersonate', 'chrome146', 'https://example.com'],
+      expect.objectContaining({ shell: false })
+    )
   })
 
   it('should resolve with successful result', async () => {
