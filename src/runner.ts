@@ -5,6 +5,14 @@ import path from 'node:path'
 import fs from 'node:fs'
 
 /**
+ * Purpose: Run curl-impersonate binaries and wrapper scripts.
+ * Caller: HTTP client request execution paths.
+ * Dependencies: node child_process, path, fs, curl-impersonate wrapper scripts.
+ * Main Functions: runBinary, runBinaryStream.
+ * Side Effects: Spawns child processes and writes optional stdin.
+ */
+
+/**
  * Parses a .bat file to extract curl arguments
  * Handles line continuations (^) and extracts all arguments after curl.exe
  * @param batFilePath Path to the .bat file
@@ -365,6 +373,26 @@ function mergeHeaderArguments(batArgs: string[], userArgs: string[]): string[] {
   return merged
 }
 
+function parseUnixWrapper(wrapperPath: string): { binaryPath: string; args: string[] } | null {
+  const content = fs.readFileSync(wrapperPath, 'utf8')
+  const command = content.match(/"\$dir\/curl-impersonate"\s+([\s\S]*?)"\$@"/)
+  if (!command) return null
+
+  const scriptDir = path.dirname(wrapperPath)
+  const binaryPath = path.join(scriptDir, 'curl-impersonate')
+  if (!fs.existsSync(binaryPath)) return null
+
+  const args = parseBatArguments(
+    command[1]
+      .replace(/\\\s*\n/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  )
+
+  return { binaryPath, args }
+}
+
 export function runBinary(
   binPath: string,
   args: string[],
@@ -378,6 +406,18 @@ export function runBinary(
     let actualBinPath = cleanPath
     let finalArgs = args
     let needsShell = false
+
+    if (!isWindows) {
+      try {
+        const wrapper = parseUnixWrapper(cleanPath)
+        if (wrapper) {
+          actualBinPath = wrapper.binaryPath
+          finalArgs = mergeHeaderArguments(wrapper.args, args)
+        }
+      } catch {
+        // Run the original executable when it is not a curl-impersonate wrapper.
+      }
+    }
 
     if (isWindows && isBatFile) {
       try {
@@ -554,6 +594,18 @@ export function runBinaryStream(
     let actualBinPath = cleanPath
     let finalArgs = args
     let needsShell = false
+
+    if (!isWindows) {
+      try {
+        const wrapper = parseUnixWrapper(cleanPath)
+        if (wrapper) {
+          actualBinPath = wrapper.binaryPath
+          finalArgs = mergeHeaderArguments(wrapper.args, args)
+        }
+      } catch {
+        // Run the original executable when it is not a curl-impersonate wrapper.
+      }
+    }
 
     if (isWindows && isBatFile) {
       try {

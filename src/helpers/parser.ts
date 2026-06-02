@@ -13,6 +13,14 @@ import { fileURLToPath } from 'url'
 import { execSync } from 'child_process'
 
 /**
+ * Purpose: Detect host platform and manage curl-impersonate binary lookup/download.
+ * Caller: parseDescriptor() callers from cuimp/client public APIs.
+ * Dependencies: fs, path, os, tar extraction, GitHub release connector, descriptor normalization.
+ * Main Functions: getSystemInfo, parseDescriptor, buildDownloadAssetName, resolveBinaryTarget.
+ * Side Effects: Reads host filesystem, downloads release assets, writes binaries under user home.
+ */
+
+/**
  * Detects if the system uses musl libc (Alpine Linux, etc.) instead of glibc
  * This is important for downloading the correct binary
  */
@@ -91,6 +99,8 @@ function getPackageDir(): string {
 
 // Binary search paths in order of preference
 const BINARY_SEARCH_PATHS = [
+  '/data/data/com.termux/files/usr/bin/',
+  '/data/data/com.termux/files/usr/local/bin/',
   '/usr/local/bin/',
   '/usr/bin/',
   '/bin/',
@@ -534,6 +544,25 @@ const downloadAndExtractBinary = async (
 }
 
 /**
+ * Detects Termux Android from stable environment and filesystem markers.
+ */
+const isTermux = (): boolean => {
+  if (process.env.TERMUX_VERSION) {
+    return true
+  }
+
+  if (process.env.PREFIX?.includes('/data/data/com.termux')) {
+    return true
+  }
+
+  try {
+    return fs.existsSync('/data/data/com.termux/files/usr')
+  } catch {
+    return false
+  }
+}
+
+/**
  * Determines the appropriate architecture and platform for the current system
  */
 export const getSystemInfo = (): { architecture: string; platform: string } => {
@@ -550,13 +579,14 @@ export const getSystemInfo = (): { architecture: string; platform: string } => {
   }
 
   const platformMap: Record<string, string> = {
+    android: 'android',
     linux: 'linux',
     win32: 'windows',
     darwin: 'macos',
   }
 
   const mappedArch = archMap[arch]
-  const mappedPlatform = platformMap[platform]
+  let mappedPlatform = platformMap[platform]
 
   if (!mappedArch) {
     throw new Error(`Unsupported architecture: ${arch}`)
@@ -564,6 +594,10 @@ export const getSystemInfo = (): { architecture: string; platform: string } => {
 
   if (!mappedPlatform) {
     throw new Error(`Unsupported platform: ${platform}`)
+  }
+
+  if (mappedPlatform === 'linux' && isTermux()) {
+    mappedPlatform = 'android'
   }
 
   return {
