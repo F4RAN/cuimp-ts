@@ -1101,6 +1101,22 @@ Thanks to these awesome people who have contributed to this project:
       <sub>Stable Release Selection (#43)</sub>
     </td>
   </tr>
+    <tr>
+    <td align="center">
+      <a href="https://github.com/rdhoni">
+        <img src="https://github.com/rdhoni.png" width="100px;" alt="KylieJennerKodes"/><br />
+        <sub><b>rdhoni</b></sub>
+      </a><br />
+      <sub>Android/Termux compatibility (#46)</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/darrencapner">
+        <img src="https://github.com/darrencapner.png" width="100px;" alt="darrencapner"/><br />
+        <sub><b>darrencapner</b></sub>
+      </a><br />
+      <sub>Stable Release Selection (#47)</sub>
+    </td>
+  </tr>
 </table>
 
 ---
