@@ -324,6 +324,72 @@ describe('runBinary - Windows .bat file header overwrite', () => {
     )
   })
 
+  it('should use curl-impersonate.exe (v1.5.0+ layout) when curl.exe is absent', async () => {
+    if (!mockPlatform('win32')) {
+      return
+    }
+
+    const batPath = 'C:\\binaries\\bin\\curl_chrome136.bat'
+    const curlImpersonatePath = 'C:\\binaries\\bin\\curl-impersonate.exe'
+
+    const batContent = `@echo off
+"%~dp0curl-impersonate.exe" ^
+    --ciphers "TLS_AES_128_GCM_SHA256" ^
+    -H "User-Agent: Mozilla/5.0" ^
+    -H "Accept: text/html" ^
+    --http2 ^
+    %*`
+
+    // Only the .bat and curl-impersonate.exe exist (no curl.exe)
+    mockExistsSync.mockImplementation((p: string) => {
+      return p === batPath || p === curlImpersonatePath
+    })
+
+    mockReaddirSync.mockImplementation(() => {
+      throw new Error('ENOENT')
+    })
+
+    mockReadFileSync.mockReturnValue(batContent)
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const mockStdout = Buffer.from('HTTP/1.1 200 OK\r\n\r\nOK')
+    mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'close') {
+        setTimeout(() => callback(0), 10)
+      }
+    })
+    mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'data') {
+        setTimeout(() => callback(mockStdout), 5)
+      }
+    })
+    mockChildProcess.stderr.on.mockImplementation(() => {})
+
+    const userArgs = ['-H', 'Accept: application/json', 'https://example.com']
+
+    await runBinary(batPath, userArgs)
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      curlImpersonatePath,
+      expect.arrayContaining([
+        '--ciphers',
+        'TLS_AES_128_GCM_SHA256',
+        '--http2',
+        '-H',
+        'Accept: application/json',
+        'https://example.com',
+      ]),
+      expect.objectContaining({
+        shell: false,
+      })
+    )
+
+    const spawnedArgs = mockSpawn.mock.calls[0][1] as string[]
+    expect(spawnedArgs).not.toContain('Accept: text/html')
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
   it('should handle complex .bat file with long cipher strings', async () => {
     if (!mockPlatform('win32')) {
       return

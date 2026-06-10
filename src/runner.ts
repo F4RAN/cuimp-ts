@@ -12,9 +12,54 @@ import fs from 'node:fs'
  * Side Effects: Spawns child processes and writes optional stdin.
  */
 
+// Matches an invocation of the curl-impersonate CLI inside a .bat wrapper.
+// curl-impersonate v1.5.0+ ships curl-impersonate.exe; older releases shipped curl.exe.
+const CURL_EXE_PATTERN = /curl(?:-impersonate)?\.exe/i
+
+// Executable names to look for next to a .bat wrapper.
+const WINDOWS_CURL_EXE_NAMES = ['curl.exe', 'curl-impersonate.exe']
+
+/**
+ * Locates the curl executable that a .bat wrapper invokes.
+ * Searches the .bat directory and its parent for known executable names,
+ * then falls back to a case-insensitive directory scan.
+ */
+function findWindowsCurlExe(batDir: string): {
+  curlExePath: string | null
+  searchedPaths: string[]
+} {
+  const searchedPaths: string[] = []
+  const parentDir = path.win32.dirname(batDir)
+
+  for (const dir of [batDir, parentDir]) {
+    for (const exeName of WINDOWS_CURL_EXE_NAMES) {
+      const candidatePath = path.win32.join(dir, exeName)
+      searchedPaths.push(candidatePath)
+      if (fs.existsSync(candidatePath)) {
+        return { curlExePath: candidatePath, searchedPaths }
+      }
+    }
+  }
+
+  try {
+    const files = fs.readdirSync(batDir)
+    for (const exeName of WINDOWS_CURL_EXE_NAMES) {
+      const match = files.find(f => f.toLowerCase() === exeName)
+      if (match) {
+        return { curlExePath: path.win32.join(batDir, match), searchedPaths }
+      }
+    }
+  } catch {
+    // Directory read failed
+  }
+
+  return { curlExePath: null, searchedPaths }
+}
+
 /**
  * Parses a .bat file to extract curl arguments
- * Handles line continuations (^) and extracts all arguments after curl.exe
+ * Handles line continuations (^) and extracts all arguments after the
+ * curl executable (curl.exe or curl-impersonate.exe)
  * @param batFilePath Path to the .bat file
  * @returns Array of curl arguments
  */
@@ -40,19 +85,17 @@ function parseBatFile(batFilePath: string): string[] {
     }
 
     // Skip @echo and other @ commands, but allow @-prefixed curl commands
-    if (
-      trimmed.startsWith('@') &&
-      !trimmed.includes('curl.exe') &&
-      !trimmed.includes('"%~dp0curl.exe"')
-    ) {
+    if (trimmed.startsWith('@') && !CURL_EXE_PATTERN.test(trimmed)) {
       continue
     }
 
-    // Check if this line starts the curl.exe command (may be prefixed with @)
-    if (trimmed.includes('curl.exe') || trimmed.includes('"%~dp0curl.exe"')) {
+    // Check if this line starts the curl executable command (may be prefixed with @)
+    if (CURL_EXE_PATTERN.test(trimmed)) {
       inCurlCommand = true
-      // Extract everything after curl.exe (handle @ prefix)
-      const match = line.match(/(?:.*?"%~dp0curl\.exe"|.*?curl\.exe)\s*(.*)$/)
+      // Extract everything after the executable (handle @ prefix)
+      const match = line.match(
+        /(?:.*?"%~dp0curl(?:-impersonate)?\.exe"|.*?curl(?:-impersonate)?\.exe)\s*(.*)$/i
+      )
       if (match && match[1]) {
         const extracted = match[1].replace(/\s*\^\s*$/, '')
 
@@ -422,44 +465,16 @@ export function runBinary(
     if (isWindows && isBatFile) {
       try {
         const batDir = path.win32.dirname(cleanPath)
-        const searchedPaths: string[] = []
-        let curlExePath: string | null = null
+        const { curlExePath, searchedPaths } = findWindowsCurlExe(batDir)
 
-        let candidatePath = path.win32.join(batDir, 'curl.exe')
-        searchedPaths.push(candidatePath)
-        if (fs.existsSync(candidatePath)) {
-          curlExePath = candidatePath
-        }
-
-        if (!curlExePath) {
-          const parentDir = path.win32.dirname(batDir)
-          candidatePath = path.win32.join(parentDir, 'curl.exe')
-          searchedPaths.push(candidatePath)
-          if (fs.existsSync(candidatePath)) {
-            curlExePath = candidatePath
-          }
-        }
-
-        if (!curlExePath) {
-          try {
-            const files = fs.readdirSync(batDir)
-            const curlExe = files.find(f => f.toLowerCase() === 'curl.exe')
-            if (curlExe) {
-              curlExePath = path.win32.join(batDir, curlExe)
-            }
-          } catch {
-            // Directory read failed
-          }
-        }
-
-        if (curlExePath && fs.existsSync(curlExePath)) {
+        if (curlExePath) {
           const batArgs = parseBatFile(cleanPath)
           finalArgs = mergeHeaderArguments(batArgs, args)
           actualBinPath = curlExePath
           needsShell = false
         } else {
           console.warn(
-            `[cuimp] curl.exe not found. Searched in: ${searchedPaths.join(', ')}. Falling back to .bat file. This may cause duplicate headers.`
+            `[cuimp] curl executable not found. Searched in: ${searchedPaths.join(', ')}. Falling back to .bat file. This may cause duplicate headers.`
           )
           needsShell = true
         }
@@ -610,44 +625,16 @@ export function runBinaryStream(
     if (isWindows && isBatFile) {
       try {
         const batDir = path.win32.dirname(cleanPath)
-        const searchedPaths: string[] = []
-        let curlExePath: string | null = null
+        const { curlExePath, searchedPaths } = findWindowsCurlExe(batDir)
 
-        let candidatePath = path.win32.join(batDir, 'curl.exe')
-        searchedPaths.push(candidatePath)
-        if (fs.existsSync(candidatePath)) {
-          curlExePath = candidatePath
-        }
-
-        if (!curlExePath) {
-          const parentDir = path.win32.dirname(batDir)
-          candidatePath = path.win32.join(parentDir, 'curl.exe')
-          searchedPaths.push(candidatePath)
-          if (fs.existsSync(candidatePath)) {
-            curlExePath = candidatePath
-          }
-        }
-
-        if (!curlExePath) {
-          try {
-            const files = fs.readdirSync(batDir)
-            const curlExe = files.find(f => f.toLowerCase() === 'curl.exe')
-            if (curlExe) {
-              curlExePath = path.win32.join(batDir, curlExe)
-            }
-          } catch {
-            // Directory read failed
-          }
-        }
-
-        if (curlExePath && fs.existsSync(curlExePath)) {
+        if (curlExePath) {
           const batArgs = parseBatFile(cleanPath)
           finalArgs = mergeHeaderArguments(batArgs, args)
           actualBinPath = curlExePath
           needsShell = false
         } else {
           console.warn(
-            `[cuimp] curl.exe not found. Searched in: ${searchedPaths.join(', ')}. Falling back to .bat file. This may cause duplicate headers.`
+            `[cuimp] curl executable not found. Searched in: ${searchedPaths.join(', ')}. Falling back to .bat file. This may cause duplicate headers.`
           )
           needsShell = true
         }
