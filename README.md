@@ -1107,6 +1107,13 @@ Thanks to these awesome people who have contributed to this project:
       </a><br />
       <sub>Android/Termux compatibility (#47)</sub>
     </td>
+    <td align="center">
+  <a href="https://github.com/Rio3210">
+    <img src="https://github.com/Rio3210.png" width="100px;" alt="Rio3210"/><br />
+    <sub><b>Rio3210</b></sub>
+  </a><br />
+  <sub>Windows Console Window Fix (#51)</sub>
+</td>
   </tr>
 </table>
 
