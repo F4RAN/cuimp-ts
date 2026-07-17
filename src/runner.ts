@@ -527,6 +527,8 @@ export function runBinary(
 
     const child = spawn(actualBinPath, finalArgs, {
       stdio: [opts?.stdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+      // Suppress the transient console window on Windows. No-op on other platforms.
+      windowsHide: true,
       shell: needsShell,
     })
 
@@ -687,6 +689,8 @@ export function runBinaryStream(
 
     const child = spawn(actualBinPath, finalArgs, {
       stdio: [opts?.stdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+      // Suppress the transient console window on Windows. No-op on other platforms.
+      windowsHide: true,
       shell: needsShell,
     })
 

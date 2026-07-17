@@ -161,6 +161,37 @@ dir=\${0%/*}
     )
   })
 
+  it('should spawn with windowsHide to suppress the console window on Windows', async () => {
+    const mockStdout = Buffer.from('output data')
+    const mockStderr = Buffer.from('')
+
+    mockChildProcess.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'close') {
+        setTimeout(() => callback(0), 10)
+      }
+    })
+    mockChildProcess.stdout.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'data') {
+        setTimeout(() => callback(mockStdout), 5)
+      }
+    })
+    mockChildProcess.stderr.on.mockImplementation((event: string, callback: Function) => {
+      if (event === 'data') {
+        setTimeout(() => callback(mockStderr), 5)
+      }
+    })
+
+    await runBinary('/usr/bin/curl-impersonate', ['-X', 'GET', 'https://example.com'])
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      '/usr/bin/curl-impersonate',
+      ['-X', 'GET', 'https://example.com'],
+      expect.objectContaining({
+        windowsHide: true,
+      })
+    )
+  })
+
   it('should handle process error', async () => {
     const error = new Error('Process failed to start')
 
