@@ -373,7 +373,7 @@ export const buildDownloadAssetName = (
   }
   if (platform === 'windows') {
     const windowsArch = architecture === 'x64' ? 'x86_64' : 'arm64'
-    return `libcurl-impersonate-${latestVersion}.${windowsArch}-win32.tar.gz`
+    return `curl-impersonate-${latestVersion}.${windowsArch}-win32.tar.gz`
   }
   if (platform === 'ios') {
     if (architecture === 'x64') {
