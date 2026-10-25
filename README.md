@@ -1121,6 +1121,13 @@ Thanks to these awesome people who have contributed to this project:
   </a><br />
   <sub>Windows CLI Binary Fix (#52)</sub>
 </td>
+    <td align="center">
+  <a href="https://github.com/viztfxyz">
+    <img src="https://github.com/viztfxyz.png" width="100px;" alt="viztfxyz"/><br />
+    <sub><b>viztfxyz</b></sub>
+  </a><br />
+  <sub>Dependency Security Fix (#54)</sub>
+</td>
   </tr>
 </table>
 
